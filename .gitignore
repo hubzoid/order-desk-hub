@@ -1,0 +1,15 @@
+.venv/
+.venv-install.log
+__pycache__/
+*.pyc
+.pytest_cache/
+.hubzoid/
+.openwebui-data/
+.inbound/
+logs/
+output/
+raw_data/
+.env
+restricted/.env
+*.sqlite
+*.sqlite-journal
