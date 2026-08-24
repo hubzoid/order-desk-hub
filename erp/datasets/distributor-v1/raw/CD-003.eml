@@ -1,0 +1,11 @@
+From: "Synthetic Alpine Hardware (synthetic)" <orders@alpine-hardware.example>
+To: service@synthetic-meridian.example
+Subject: Has AH-3301 shipped?
+Date: Sat, 15 Jan 2000 09:42:00 +0000
+Message-ID: <CD-003@synthetic-sample.example>
+X-Hubzoid-Synthetic: distributor-v1
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+Can you confirm AH-3301 has shipped in full? (synthetic sample)

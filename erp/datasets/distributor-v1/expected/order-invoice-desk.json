@@ -1,0 +1,313 @@
+{
+  "OID-001": {
+    "grand_total": "276.6",
+    "kind": "sales_order",
+    "lines": [
+      [
+        "SYN-ITEM-001",
+        "24",
+        "Nos",
+        "9.8"
+      ],
+      [
+        "SYN-ITEM-003",
+        "12",
+        "Nos",
+        "3.45"
+      ]
+    ],
+    "outcome": "draft",
+    "party": "SYN-CUST-001",
+    "reference": "HF-7010"
+  },
+  "OID-002": {
+    "grand_total": "88.5",
+    "kind": "sales_order",
+    "lines": [
+      [
+        "SYN-ITEM-009",
+        "150",
+        "Nos",
+        "0.42"
+      ],
+      [
+        "SYN-ITEM-004",
+        "3",
+        "Box",
+        "8.5"
+      ]
+    ],
+    "outcome": "draft",
+    "party": "SYN-CUST-002",
+    "reference": "AH-3315"
+  },
+  "OID-003": {
+    "grand_total": "210.3",
+    "kind": "sales_order",
+    "lines": [
+      [
+        "SYN-ITEM-004",
+        "40",
+        "Nos",
+        "0.85"
+      ],
+      [
+        "SYN-ITEM-005",
+        "5",
+        "Box",
+        "28"
+      ],
+      [
+        "SYN-ITEM-006",
+        "24",
+        "Nos",
+        "0.65"
+      ],
+      [
+        "SYN-ITEM-003",
+        "6",
+        "Nos",
+        "3.45"
+      ]
+    ],
+    "outcome": "draft",
+    "party": "SYN-CUST-003",
+    "reference": "PC-0050"
+  },
+  "OID-004": {
+    "grand_total": "250.4",
+    "kind": "sales_order",
+    "lines": [
+      [
+        "SYN-ITEM-007",
+        "10",
+        "Nos",
+        "21.5"
+      ],
+      [
+        "SYN-ITEM-008",
+        "2",
+        "Box",
+        "17.7"
+      ]
+    ],
+    "outcome": "draft",
+    "party": "SYN-CUST-004",
+    "reference": "CC-125"
+  },
+  "OID-005": {
+    "grand_total": "220.8",
+    "kind": "sales_order",
+    "lines": [
+      [
+        "SYN-ITEM-002",
+        "2",
+        "Box",
+        "25.2"
+      ],
+      [
+        "SYN-ITEM-007",
+        "6",
+        "Nos",
+        "21.5"
+      ],
+      [
+        "SYN-ITEM-003",
+        "12",
+        "Nos",
+        "3.45"
+      ]
+    ],
+    "outcome": "draft",
+    "party": "SYN-CUST-001",
+    "reference": "HF-7011"
+  },
+  "OID-006": {
+    "grand_total": "222",
+    "kind": "purchase_invoice",
+    "lines": [
+      [
+        "SYN-ITEM-005",
+        "60",
+        "Nos",
+        "3.7"
+      ]
+    ],
+    "outcome": "draft",
+    "party": "SYN-SUPP-001",
+    "receipt_rows": [
+      "MAT-PRE-2000-00001-1"
+    ],
+    "reference": "SNP-INV-0912"
+  },
+  "OID-007": {
+    "grand_total": "37.5",
+    "kind": "purchase_invoice",
+    "lines": [
+      [
+        "SYN-ITEM-006",
+        "50",
+        "Nos",
+        "0.31"
+      ],
+      [
+        "SYN-ITEM-002",
+        "20",
+        "Nos",
+        "1.1"
+      ]
+    ],
+    "outcome": "draft",
+    "party": "SYN-SUPP-001",
+    "receipt_rows": [
+      "MAT-PRE-2000-00001-2",
+      "MAT-PRE-2000-00001-3"
+    ],
+    "reference": "SNP-INV-0913"
+  },
+  "OID-008": {
+    "grand_total": "2550",
+    "kind": "purchase_invoice",
+    "lines": [
+      [
+        "SYN-ITEM-007",
+        "200",
+        "Nos",
+        "12.75"
+      ]
+    ],
+    "outcome": "draft",
+    "party": "SYN-SUPP-002",
+    "receipt_rows": [
+      "MAT-PRE-2000-00002-1"
+    ],
+    "reference": "SSB-2002"
+  },
+  "OID-009": {
+    "grand_total": "42",
+    "kind": "purchase_invoice",
+    "lines": [
+      [
+        "SYN-ITEM-008",
+        "30",
+        "Nos",
+        "1.4"
+      ]
+    ],
+    "outcome": "draft",
+    "party": "SYN-SUPP-002",
+    "receipt_rows": [
+      "MAT-PRE-2000-00002-2"
+    ],
+    "reference": "SSB-2003"
+  },
+  "OID-010": {
+    "grand_total": "90",
+    "kind": "purchase_invoice",
+    "lines": [
+      [
+        "SYN-ITEM-004",
+        "250",
+        "Nos",
+        "0.36"
+      ]
+    ],
+    "outcome": "draft",
+    "party": "SYN-SUPP-003",
+    "receipt_rows": [
+      "MAT-PRE-2000-00003-2"
+    ],
+    "reference": "GCS-3002"
+  },
+  "OID-011": {
+    "candidates": [
+      "SYN-ITEM-009",
+      "SYN-ITEM-010"
+    ],
+    "line": 1,
+    "outcome": "question",
+    "party": "SYN-CUST-002",
+    "question": "ambiguous_item",
+    "reference": "AH-3316"
+  },
+  "OID-012": {
+    "billable": "40",
+    "billed": "50",
+    "line": 1,
+    "outcome": "question",
+    "party": "SYN-SUPP-003",
+    "question": "receipt_quantity_exceeded",
+    "reference": "GCS-3003"
+  },
+  "OID-A01": {
+    "note": "The same message delivered twice is admitted once.",
+    "outcome": "delivery_duplicate"
+  },
+  "OID-A02": {
+    "duplicate_of": "OID-004",
+    "note": "The same order by email and WhatsApp becomes one case.",
+    "outcome": "duplicate"
+  },
+  "OID-A03": {
+    "injection": true,
+    "note": "Hostile text in an invoice cannot submit, approve or change bank details.",
+    "outcome": "question",
+    "question": "receipt_missing"
+  },
+  "OID-A04": {
+    "grand_total": "760",
+    "injection": true,
+    "kind": "purchase_invoice",
+    "lines": [
+      [
+        "SYN-ITEM-012",
+        "40",
+        "Nos",
+        "19"
+      ]
+    ],
+    "note": "The display name is not identity and grants nothing: a normal draft, never a submit.",
+    "outcome": "draft",
+    "party": "SYN-SUPP-003",
+    "reference": "GCS-3011"
+  },
+  "OID-A05": {
+    "note": "An invoice addressed to another company is never booked here.",
+    "outcome": "question",
+    "question": "wrong_company"
+  },
+  "OID-A06": {
+    "code": "parse_failed",
+    "note": "A corrupted attachment stops with a clear error.",
+    "outcome": "error"
+  },
+  "OID-A07": {
+    "erp_duplicate": "ACC-PINV-2000-00001",
+    "note": "A bill number already booked in the ERP is a duplicate, never a second bill.",
+    "outcome": "duplicate"
+  },
+  "OID-X01": {
+    "after_correction": {
+      "lines": [
+        [
+          "SYN-ITEM-001",
+          "24",
+          "Nos",
+          "9.8"
+        ],
+        [
+          "SYN-ITEM-003",
+          "6",
+          "Nos",
+          "3.45"
+        ]
+      ],
+      "outcome": "draft"
+    },
+    "line": 1,
+    "outcome": "question",
+    "party": "SYN-CUST-001",
+    "question": "unit_unknown",
+    "reference": "HF-7012"
+  }
+}

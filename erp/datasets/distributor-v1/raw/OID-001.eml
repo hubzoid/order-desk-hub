@@ -1,0 +1,23 @@
+From: "Synthetic Harbor Foods (synthetic)" <purchasing@harbor-foods.example>
+To: orders@synthetic-meridian.example
+Subject: Purchase order HF-7010
+Date: Sat, 15 Jan 2000 08:01:00 +0000
+Message-ID: <OID-001@synthetic-sample.example>
+X-Hubzoid-Synthetic: distributor-v1
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+Hello Meridian team,
+
+Please supply the following.
+
+PO number: HF-7010
+Order date: 2000-01-14
+Deliver by: 2000-01-21
+
+24 x SYN-ITEM-001 Synthetic Olive Oil 1L
+12 x SYN-ITEM-003 Synthetic Dish Soap 500ml
+
+Thank you,
+Synthetic Harbor Foods purchasing (synthetic sample)

@@ -1,0 +1,16 @@
+[
+  {
+    "doctype": "UOM",
+    "name": "Nos",
+    "uom_name": "Nos",
+    "must_be_whole_number": 1,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "UOM",
+    "name": "Box",
+    "uom_name": "Box",
+    "must_be_whole_number": 1,
+    "modified": "2000-01-10 09:00:00.000000"
+  }
+]

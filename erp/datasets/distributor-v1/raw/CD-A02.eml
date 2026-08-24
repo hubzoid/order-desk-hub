@@ -1,0 +1,11 @@
+From: "Synthetic Alpine Hardware (synthetic)" <orders@alpine-hardware.example>
+To: service@synthetic-meridian.example
+Subject: Invoice copy
+Date: Sat, 15 Jan 2000 10:21:00 +0000
+Message-ID: <CD-A02@synthetic-sample.example>
+X-Hubzoid-Synthetic: distributor-v1
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+Please send me invoice ACC-SINV-2000-00001. (synthetic sample)

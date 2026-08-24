@@ -1,0 +1,16 @@
+[
+  {
+    "doctype": "Warehouse",
+    "name": "SYN-MAIN - SMD",
+    "warehouse_name": "SYN-MAIN",
+    "company": "Synthetic Meridian Distribution",
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Warehouse",
+    "name": "SYN-OVERFLOW - SMD",
+    "warehouse_name": "SYN-OVERFLOW",
+    "company": "Synthetic Meridian Distribution",
+    "modified": "2000-01-10 09:00:00.000000"
+  }
+]

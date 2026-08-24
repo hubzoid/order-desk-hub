@@ -1,0 +1,14 @@
+From: "Synthetic Alpine Hardware (synthetic)" <orders@alpine-hardware.example>
+To: orders@synthetic-meridian.example
+Subject: Order AH-3316
+Date: Sat, 15 Jan 2000 08:11:00 +0000
+Message-ID: <OID-011@synthetic-sample.example>
+X-Hubzoid-Synthetic: distributor-v1
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+Hi, PO AH-3316, order date 2000-01-15, deliver by 2000-01-27:
+80 x Synthetic Hex Bolt M8
+10 x SYN-ITEM-006 ballpoint pens
+Thanks, Alpine Hardware (synthetic sample)

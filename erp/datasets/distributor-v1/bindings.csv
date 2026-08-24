@@ -1,0 +1,15 @@
+company,channel_kind,sender,party_type,party_id,source_ref
+Synthetic Meridian Distribution,email,purchasing@harbor-foods.example,Customer,SYN-CUST-001,erp-contact:SYN-CONT-0001
+Synthetic Meridian Distribution,whatsapp,+12025550101,Customer,SYN-CUST-001,erp-contact:SYN-CONT-0001
+Synthetic Meridian Distribution,email,orders@alpine-hardware.example,Customer,SYN-CUST-002,erp-contact:SYN-CONT-0002
+Synthetic Meridian Distribution,whatsapp,+12025550102,Customer,SYN-CUST-002,erp-contact:SYN-CONT-0002
+Synthetic Meridian Distribution,email,supplies@prairie-clinics.example,Customer,SYN-CUST-003,erp-contact:SYN-CONT-0003
+Synthetic Meridian Distribution,whatsapp,+12025550103,Customer,SYN-CUST-003,erp-contact:SYN-CONT-0003
+Synthetic Meridian Distribution,email,hello@coastal-cafes.example,Customer,SYN-CUST-004,erp-contact:SYN-CONT-0004
+Synthetic Meridian Distribution,whatsapp,+12025550104,Customer,SYN-CUST-004,erp-contact:SYN-CONT-0004
+Synthetic Meridian Distribution,email,billing@northwind-paper.example,Supplier,SYN-SUPP-001,erp-contact:SYN-CONT-0011
+Synthetic Meridian Distribution,whatsapp,+12025550111,Supplier,SYN-SUPP-001,erp-contact:SYN-CONT-0011
+Synthetic Meridian Distribution,email,ar@summit-beverages.example,Supplier,SYN-SUPP-002,erp-contact:SYN-CONT-0012
+Synthetic Meridian Distribution,whatsapp,+12025550112,Supplier,SYN-SUPP-002,erp-contact:SYN-CONT-0012
+Synthetic Meridian Distribution,email,invoices@granite-cleaning.example,Supplier,SYN-SUPP-003,erp-contact:SYN-CONT-0013
+Synthetic Meridian Distribution,whatsapp,+12025550113,Supplier,SYN-SUPP-003,erp-contact:SYN-CONT-0013

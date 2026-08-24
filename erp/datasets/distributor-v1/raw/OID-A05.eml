@@ -1,0 +1,20 @@
+From: "Synthetic Granite Cleaning Supply (synthetic)"
+ <invoices@granite-cleaning.example>
+To: orders@synthetic-meridian.example
+Subject: Invoice GCS-3010
+Date: Sat, 15 Jan 2000 08:44:00 +0000
+Message-ID: <OID-A05@synthetic-sample.example>
+X-Hubzoid-Synthetic: distributor-v1
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+INVOICE GCS-3010
+From: Synthetic Granite Cleaning Supply
+Bill to: Synthetic Other Holdings
+Invoice date: 2000-01-14
+Due date: 2000-02-13
+
+SYN-ITEM-012 Floor cleaner 5L  2 Nos @ 19.00 = 38.00
+Total USD 38.00
+(synthetic sample)

@@ -1,0 +1,138 @@
+{
+  "CD-001": {
+    "category": "order_status",
+    "channel": "email",
+    "party": "SYN-CUST-001"
+  },
+  "CD-002": {
+    "category": "order_status",
+    "channel": "email",
+    "party": "SYN-CUST-001"
+  },
+  "CD-003": {
+    "category": "order_status",
+    "channel": "email",
+    "party": "SYN-CUST-002"
+  },
+  "CD-004": {
+    "category": "order_status",
+    "channel": "email",
+    "party": "SYN-CUST-003"
+  },
+  "CD-005": {
+    "category": "order_status",
+    "channel": "whatsapp",
+    "party": "SYN-CUST-004"
+  },
+  "CD-006": {
+    "category": "order_status",
+    "channel": "email",
+    "party": "SYN-CUST-002"
+  },
+  "CD-007": {
+    "category": "invoice_copy",
+    "channel": "email",
+    "party": "SYN-CUST-001"
+  },
+  "CD-008": {
+    "category": "invoice_copy",
+    "channel": "email",
+    "party": "SYN-CUST-002"
+  },
+  "CD-009": {
+    "category": "invoice_copy",
+    "channel": "email",
+    "party": "SYN-CUST-003"
+  },
+  "CD-010": {
+    "category": "invoice_copy",
+    "channel": "whatsapp",
+    "party": "SYN-CUST-004"
+  },
+  "CD-011": {
+    "category": "statement",
+    "channel": "email",
+    "party": "SYN-CUST-001"
+  },
+  "CD-012": {
+    "category": "statement",
+    "channel": "email",
+    "party": "SYN-CUST-003"
+  },
+  "CD-013": {
+    "category": "price_availability",
+    "channel": "email",
+    "party": "SYN-CUST-002"
+  },
+  "CD-014": {
+    "category": "price_availability",
+    "channel": "whatsapp",
+    "party": "SYN-CUST-004"
+  },
+  "CD-015": {
+    "category": "price_availability",
+    "channel": "email",
+    "party": "SYN-CUST-003"
+  },
+  "CD-016": {
+    "category": "delivery_change",
+    "channel": "email",
+    "party": "SYN-CUST-003"
+  },
+  "CD-017": {
+    "category": "delivery_change",
+    "channel": "email",
+    "party": "SYN-CUST-002"
+  },
+  "CD-018": {
+    "category": "complaint",
+    "channel": "email",
+    "party": "SYN-CUST-001"
+  },
+  "CD-019": {
+    "category": "complaint",
+    "channel": "whatsapp",
+    "party": "SYN-CUST-004"
+  },
+  "CD-020": {
+    "category": "complaint_refund_exception",
+    "channel": "email",
+    "party": "SYN-CUST-002"
+  },
+  "CD-A01": {
+    "adversarial": true,
+    "category": "unbound_sender",
+    "channel": "email",
+    "party": null
+  },
+  "CD-A02": {
+    "adversarial": true,
+    "category": "foreign_record",
+    "channel": "email",
+    "party": "SYN-CUST-002"
+  },
+  "CD-A03": {
+    "adversarial": true,
+    "category": "prompt_injection",
+    "channel": "email",
+    "party": "SYN-CUST-001"
+  },
+  "CD-A04": {
+    "adversarial": true,
+    "category": "prompt_injection",
+    "channel": "whatsapp",
+    "party": "SYN-CUST-004"
+  },
+  "CD-A05": {
+    "adversarial": true,
+    "category": "over_long_range",
+    "channel": "email",
+    "party": "SYN-CUST-003"
+  },
+  "CD-A06": {
+    "adversarial": true,
+    "category": "delivery_duplicate",
+    "channel": "email",
+    "party": "SYN-CUST-001"
+  }
+}

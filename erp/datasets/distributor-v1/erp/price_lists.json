@@ -1,0 +1,22 @@
+[
+  {
+    "doctype": "Price List",
+    "name": "SYN-RETAIL",
+    "price_list_name": "SYN-RETAIL",
+    "currency": "USD",
+    "selling": 1,
+    "buying": 0,
+    "enabled": 1,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Price List",
+    "name": "SYN-BUYING",
+    "price_list_name": "SYN-BUYING",
+    "currency": "USD",
+    "selling": 0,
+    "buying": 1,
+    "enabled": 1,
+    "modified": "2000-01-10 09:00:00.000000"
+  }
+]

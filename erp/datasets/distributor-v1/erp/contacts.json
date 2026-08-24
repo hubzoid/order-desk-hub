@@ -1,0 +1,100 @@
+[
+  {
+    "doctype": "Contact",
+    "name": "SYN-CONT-0001",
+    "first_name": "Synthetic Harbor Foods contact",
+    "email_id": "purchasing@harbor-foods.example",
+    "mobile_no": "+12025550101",
+    "links": [
+      {
+        "link_doctype": "Customer",
+        "link_name": "SYN-CUST-001"
+      }
+    ],
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Contact",
+    "name": "SYN-CONT-0002",
+    "first_name": "Synthetic Alpine Hardware contact",
+    "email_id": "orders@alpine-hardware.example",
+    "mobile_no": "+12025550102",
+    "links": [
+      {
+        "link_doctype": "Customer",
+        "link_name": "SYN-CUST-002"
+      }
+    ],
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Contact",
+    "name": "SYN-CONT-0003",
+    "first_name": "Synthetic Prairie Clinics contact",
+    "email_id": "supplies@prairie-clinics.example",
+    "mobile_no": "+12025550103",
+    "links": [
+      {
+        "link_doctype": "Customer",
+        "link_name": "SYN-CUST-003"
+      }
+    ],
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Contact",
+    "name": "SYN-CONT-0004",
+    "first_name": "Synthetic Coastal Cafes contact",
+    "email_id": "hello@coastal-cafes.example",
+    "mobile_no": "+12025550104",
+    "links": [
+      {
+        "link_doctype": "Customer",
+        "link_name": "SYN-CUST-004"
+      }
+    ],
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Contact",
+    "name": "SYN-CONT-0011",
+    "first_name": "Synthetic Northwind Paper Co contact",
+    "email_id": "billing@northwind-paper.example",
+    "mobile_no": "+12025550111",
+    "links": [
+      {
+        "link_doctype": "Supplier",
+        "link_name": "SYN-SUPP-001"
+      }
+    ],
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Contact",
+    "name": "SYN-CONT-0012",
+    "first_name": "Synthetic Summit Beverages contact",
+    "email_id": "ar@summit-beverages.example",
+    "mobile_no": "+12025550112",
+    "links": [
+      {
+        "link_doctype": "Supplier",
+        "link_name": "SYN-SUPP-002"
+      }
+    ],
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Contact",
+    "name": "SYN-CONT-0013",
+    "first_name": "Synthetic Granite Cleaning Supply contact",
+    "email_id": "invoices@granite-cleaning.example",
+    "mobile_no": "+12025550113",
+    "links": [
+      {
+        "link_doctype": "Supplier",
+        "link_name": "SYN-SUPP-003"
+      }
+    ],
+    "modified": "2000-01-10 09:00:00.000000"
+  }
+]

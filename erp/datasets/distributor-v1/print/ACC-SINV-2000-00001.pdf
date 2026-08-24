@@ -1,0 +1,116 @@
+%PDF-1.3
+%“Œ‹ž ReportLab Generated PDF document (opensource)
+1 0 obj
+<<
+/F1 2 0 R /F2 3 0 R
+>>
+endobj
+2 0 obj
+<<
+/BaseFont /Helvetica /Encoding /WinAnsiEncoding /Name /F1 /Subtype /Type1 /Type /Font
+>>
+endobj
+3 0 obj
+<<
+/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding /Name /F2 /Subtype /Type1 /Type /Font
+>>
+endobj
+4 0 obj
+<<
+/Contents 8 0 R /MediaBox [ 0 0 612 792 ] /Parent 7 0 R /Resources <<
+/Font 1 0 R /ProcSet [ /PDF /Text /ImageB /ImageC /ImageI ]
+>> /Rotate 0 /Trans <<
+
+>> 
+  /Type /Page
+>>
+endobj
+5 0 obj
+<<
+/PageMode /UseNone /Pages 7 0 R /Type /Catalog
+>>
+endobj
+6 0 obj
+<<
+/Author (Hubzoid synthetic data \(distributor-v1\)) /CreationDate (D:20000101000000+00'00') /Creator (anonymous) /Keywords () /ModDate (D:20000101000000+00'00') /Producer (ReportLab PDF Library - \(opensource\)) 
+  /Subject (unspecified) /Title (SYNTHETIC SAMPLE SALES INVOICE ACC-SINV-2000-00001.pdf) /Trapped /False
+>>
+endobj
+7 0 obj
+<<
+/Count 1 /Kids [ 4 0 R ] /Type /Pages
+>>
+endobj
+8 0 obj
+<<
+/Length 1722
+>>
+stream
+1 0 0 1 0 0 cm  BT /F1 12 Tf 14.4 TL ET
+BT /F2 9 Tf 10.8 TL ET
+BT 1 0 0 1 54 738 Tm (SYNTHETIC SAMPLE DOCUMENT. Not a real order or invoice.) Tj T* ET
+BT /F2 18 Tf 21.6 TL ET
+BT 1 0 0 1 54 708 Tm (SALES INVOICE) Tj T* ET
+BT /F1 10 Tf 12 TL ET
+BT 1 0 0 1 54 680 Tm (Invoice: ACC-SINV-2000-00001) Tj T* ET
+BT 1 0 0 1 54 665 Tm (Company: Synthetic Meridian Distribution) Tj T* ET
+BT 1 0 0 1 54 650 Tm (Customer: Synthetic Harbor Foods) Tj T* ET
+BT 1 0 0 1 54 635 Tm (Customer PO: HF-7002) Tj T* ET
+BT 1 0 0 1 54 620 Tm (Posting date: 2000-01-07) Tj T* ET
+BT 1 0 0 1 54 605 Tm (Due date: 2000-02-06) Tj T* ET
+BT 1 0 0 1 54 590 Tm (Status: Unpaid) Tj T* ET
+BT /F2 10 Tf 12 TL ET
+BT 1 0 0 1 54 563 Tm (Item) Tj T* ET
+BT 1 0 0 1 140 563 Tm (Description) Tj T* ET
+BT 1 0 0 1 330 563 Tm (Qty) Tj T* ET
+BT 1 0 0 1 380 563 Tm (Unit) Tj T* ET
+BT 1 0 0 1 430 563 Tm (Rate) Tj T* ET
+BT 1 0 0 1 500 563 Tm (Amount) Tj T* ET
+n 54 557 m 558 557 l S
+BT /F1 10 Tf 12 TL ET
+BT 1 0 0 1 54 543 Tm (SYN-ITEM-007) Tj T* ET
+BT 1 0 0 1 140 543 Tm (Synthetic Espresso Beans 1kg) Tj T* ET
+BT 1 0 0 1 330 543 Tm (12) Tj T* ET
+BT 1 0 0 1 380 543 Tm (Nos) Tj T* ET
+BT 1 0 0 1 430 543 Tm (21.50) Tj T* ET
+BT 1 0 0 1 500 543 Tm (258.00) Tj T* ET
+BT 1 0 0 1 54 528 Tm (SYN-ITEM-003) Tj T* ET
+BT 1 0 0 1 140 528 Tm (Synthetic Dish Soap 500ml) Tj T* ET
+BT 1 0 0 1 330 528 Tm (12) Tj T* ET
+BT 1 0 0 1 380 528 Tm (Nos) Tj T* ET
+BT 1 0 0 1 430 528 Tm (3.45) Tj T* ET
+BT 1 0 0 1 500 528 Tm (41.40) Tj T* ET
+n 54 507 m 558 507 l S
+BT /F2 10 Tf 12 TL ET
+BT 1 0 0 1 380 491 Tm (Grand total \(USD\)) Tj T* ET
+BT 1 0 0 1 500 491 Tm (299.40) Tj T* ET
+BT /F2 10 Tf 12 TL ET
+BT 1 0 0 1 380 476 Tm (Outstanding \(USD\)) Tj T* ET
+BT 1 0 0 1 500 476 Tm (299.40) Tj T* ET
+ 
+endstream
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000061 00000 n 
+0000000102 00000 n 
+0000000209 00000 n 
+0000000321 00000 n 
+0000000514 00000 n 
+0000000582 00000 n 
+0000000921 00000 n 
+0000000980 00000 n 
+trailer
+<<
+/ID 
+[<4a12317e7f0ca95f26be07a828025118><4a12317e7f0ca95f26be07a828025118>]
+% ReportLab generated PDF document -- digest (opensource)
+
+/Info 6 0 R
+/Root 5 0 R
+/Size 9
+>>
+startxref
+2753
+%%EOF

@@ -1,0 +1,142 @@
+[
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-001-MAIN",
+    "item_code": "SYN-ITEM-001",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 480,
+    "reserved_qty": 48,
+    "projected_qty": 432,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-002-MAIN",
+    "item_code": "SYN-ITEM-002",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 240,
+    "reserved_qty": 0,
+    "projected_qty": 240,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-003-MAIN",
+    "item_code": "SYN-ITEM-003",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 300,
+    "reserved_qty": 24,
+    "projected_qty": 276,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-004-MAIN",
+    "item_code": "SYN-ITEM-004",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 1200,
+    "reserved_qty": 30,
+    "projected_qty": 1170,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-005-MAIN",
+    "item_code": "SYN-ITEM-005",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 150,
+    "reserved_qty": 10,
+    "projected_qty": 140,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-006-MAIN",
+    "item_code": "SYN-ITEM-006",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 600,
+    "reserved_qty": 0,
+    "projected_qty": 600,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-007-MAIN",
+    "item_code": "SYN-ITEM-007",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 90,
+    "reserved_qty": 28,
+    "projected_qty": 62,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-008-MAIN",
+    "item_code": "SYN-ITEM-008",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 144,
+    "reserved_qty": 24,
+    "projected_qty": 120,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-009-MAIN",
+    "item_code": "SYN-ITEM-009",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 5000,
+    "reserved_qty": 0,
+    "projected_qty": 5000,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-010-MAIN",
+    "item_code": "SYN-ITEM-010",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 0,
+    "reserved_qty": 0,
+    "projected_qty": 0,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-011-MAIN",
+    "item_code": "SYN-ITEM-011",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 14,
+    "reserved_qty": 0,
+    "projected_qty": 14,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-012-MAIN",
+    "item_code": "SYN-ITEM-012",
+    "warehouse": "SYN-MAIN - SMD",
+    "actual_qty": 40,
+    "reserved_qty": 0,
+    "projected_qty": 40,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-010-OVERFLOW",
+    "item_code": "SYN-ITEM-010",
+    "warehouse": "SYN-OVERFLOW - SMD",
+    "actual_qty": 400,
+    "reserved_qty": 0,
+    "projected_qty": 400,
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Bin",
+    "name": "BIN-SYN-ITEM-007-OVERFLOW",
+    "item_code": "SYN-ITEM-007",
+    "warehouse": "SYN-OVERFLOW - SMD",
+    "actual_qty": 60,
+    "reserved_qty": 0,
+    "projected_qty": 60,
+    "modified": "2000-01-10 09:00:00.000000"
+  }
+]

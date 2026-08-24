@@ -1,0 +1,21 @@
+From:
+ "Synthetic Northwind Paper Co (synthetic)" <billing@northwind-paper.example>
+To: orders@synthetic-meridian.example
+Subject: Invoice SNP-INV-0901
+Date: Sat, 15 Jan 2000 08:46:00 +0000
+Message-ID: <OID-A07@synthetic-sample.example>
+X-Hubzoid-Synthetic: distributor-v1
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+INVOICE SNP-INV-0901
+From: Synthetic Northwind Paper Co
+Bill to: Synthetic Meridian Distribution
+Invoice date: 2000-01-08
+Due date: 2000-02-07
+Your PO: PUR-ORD-2000-00001
+
+SYN-ITEM-005 Copy paper A4 ream  40 Nos @ 3.70 = 148.00
+Total USD 148.00
+(synthetic sample)

@@ -1,0 +1,29 @@
+[
+  {
+    "doctype": "Supplier",
+    "name": "SYN-SUPP-001",
+    "supplier_name": "Synthetic Northwind Paper Co",
+    "supplier_group": "All Supplier Groups",
+    "disabled": 0,
+    "default_currency": "USD",
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Supplier",
+    "name": "SYN-SUPP-002",
+    "supplier_name": "Synthetic Summit Beverages",
+    "supplier_group": "All Supplier Groups",
+    "disabled": 0,
+    "default_currency": "USD",
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Supplier",
+    "name": "SYN-SUPP-003",
+    "supplier_name": "Synthetic Granite Cleaning Supply",
+    "supplier_group": "All Supplier Groups",
+    "disabled": 0,
+    "default_currency": "USD",
+    "modified": "2000-01-10 09:00:00.000000"
+  }
+]

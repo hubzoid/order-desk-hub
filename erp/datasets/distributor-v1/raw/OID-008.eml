@@ -1,0 +1,21 @@
+From: "Synthetic Summit Beverages (synthetic)" <ar@summit-beverages.example>
+To: orders@synthetic-meridian.example
+Subject: Invoice SSB-2002
+Date: Sat, 15 Jan 2000 08:08:00 +0000
+Message-ID: <OID-008@synthetic-sample.example>
+X-Hubzoid-Synthetic: distributor-v1
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+MIME-Version: 1.0
+
+INVOICE SSB-2002
+From: Synthetic Summit Beverages
+Bill to: Synthetic Meridian Distribution
+Invoice date: 2000-01-11
+Due date: 2000-02-10
+Your PO: PUR-ORD-2000-00002
+
+SYN-ITEM-007 Espresso beans 1kg  200 Nos @ 12.75 = 2550.00
+
+Total USD 2550.00
+(synthetic sample)

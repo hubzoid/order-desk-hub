@@ -1,0 +1,50 @@
+[
+  {
+    "doctype": "Customer",
+    "name": "SYN-CUST-001",
+    "customer_name": "Synthetic Harbor Foods",
+    "customer_type": "Company",
+    "customer_group": "Commercial",
+    "territory": "All Territories",
+    "disabled": 0,
+    "default_currency": "USD",
+    "default_price_list": "SYN-RETAIL",
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Customer",
+    "name": "SYN-CUST-002",
+    "customer_name": "Synthetic Alpine Hardware",
+    "customer_type": "Company",
+    "customer_group": "Commercial",
+    "territory": "All Territories",
+    "disabled": 0,
+    "default_currency": "USD",
+    "default_price_list": "SYN-RETAIL",
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Customer",
+    "name": "SYN-CUST-003",
+    "customer_name": "Synthetic Prairie Clinics",
+    "customer_type": "Company",
+    "customer_group": "Commercial",
+    "territory": "All Territories",
+    "disabled": 0,
+    "default_currency": "USD",
+    "default_price_list": "SYN-RETAIL",
+    "modified": "2000-01-10 09:00:00.000000"
+  },
+  {
+    "doctype": "Customer",
+    "name": "SYN-CUST-004",
+    "customer_name": "Synthetic Coastal Cafes",
+    "customer_type": "Company",
+    "customer_group": "Commercial",
+    "territory": "All Territories",
+    "disabled": 0,
+    "default_currency": "USD",
+    "default_price_list": "SYN-RETAIL",
+    "modified": "2000-01-10 09:00:00.000000"
+  }
+]
