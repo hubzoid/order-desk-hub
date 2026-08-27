@@ -339,9 +339,15 @@ def test_pinned_backend_refuses_metadata_and_private(tmp_path):
 
 
 def test_sample_generation_reproducible():
-    from erp.datasets import generate
+    import subprocess
+    import sys
 
-    assert generate.main(["--check"]) == 0
+    from tests.conftest import ROOT
+
+    # A fresh process, so no library imported earlier changes the output.
+    done = subprocess.run([sys.executable, "-m", "erp.datasets.generate", "--check"], cwd=ROOT, capture_output=True,
+                          text=True, timeout=120)
+    assert done.returncode == 0, done.stdout + done.stderr
 
 
 def test_intake_fixture_matches_hub106_schema():

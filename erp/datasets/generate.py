@@ -11,6 +11,12 @@ the same bytes (recorded in the manifest).
 """
 from __future__ import annotations
 
+import os
+
+# openpyxl serialises differently when lxml is installed. Pin its own writer so
+# the spreadsheets are the same bytes on every machine. Set before any import.
+os.environ["OPENPYXL_LXML"] = "False"
+
 import argparse
 import csv
 import email.utils

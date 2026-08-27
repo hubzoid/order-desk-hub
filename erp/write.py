@@ -38,10 +38,14 @@ from .errors import ERPError, NotDispatched, Refused, WriteUncertain, writes_dis
 from .resources import WRITE_KINDS
 
 MAX_LINES = 200
+#: Stripped and reported: the ERP owns them, and docstatus is always sent as 0.
 STATUS_FIELDS = frozenset({"docstatus", "status", "workflow_state", "per_delivered", "per_billed", "per_received",
-                           "delivery_status", "billing_status", "outstanding_amount", "amended_from", "is_return",
+                           "delivery_status", "billing_status", "outstanding_amount", "is_return",
                            "submit_on_creation", "_submit", "submitted"})
-REFUSED_FIELDS = frozenset({"name", "owner", "creation", "modified", "modified_by", "naming_series", "doctype",
+#: Refused: identity, amendment and internal keys (Frappe would honour or act on
+#: some of them, and silently drop unknown ones).
+REFUSED_FIELDS = frozenset({"name", "__newname", "owner", "creation", "modified", "modified_by", "naming_series",
+                            "doctype", "amended_from", "amendment_date", "flags", "__islocal", "__unsaved",
                             "custom_hubzoid_operation_id", "parent", "parenttype", "parentfield", "idx"})
 
 
@@ -341,6 +345,19 @@ class DraftWriter:
         return self.view(kind, reread, deduplicated=False, differences=diffs, needs_review=bool(diffs),
                          stripped=stripped)
 
+    def _workflow_active(self, transport, doctype: str) -> bool:
+        if self.cfg.backend == "sample":
+            return False
+        try:
+            rows = transport.list_docs("Workflow", filters=[["document_type", "=", doctype], ["is_active", "=", 1]],
+                                       fields=["document_type"], start=0, limit=1)
+        except ERPError as exc:
+            if exc.code == "not_found":
+                return False
+            raise ERPError("submit_not_allowed", "Cannot check whether an ERPNext Workflow governs this document. "
+                           "Give the submit user read access to Workflow.", status=409) from None
+        return bool(rows)
+
     def get(self, kind: str, name: str) -> dict:
         doctype = _kind(kind)
         doc = self.rt.get_doc(doctype, name)
@@ -361,24 +378,33 @@ class DraftWriter:
         if not isinstance(approved_digest, str) or not approved_digest.startswith("sha256:"):
             raise ERPError("invalid_payload", "approved_digest is the sha256: digest the person approved.",
                            status=422)
-        doc = self.rt.get_doc(doctype, name)
-        if doc is None or doc.get("company") != self.cfg.company:
-            raise ERPError("not_found", f"No {doctype} {name} here.", status=404)
-        status = int(doc.get("docstatus") or 0)
-        if status == 1:
-            raise ERPError("already_submitted", f"{doctype} {name} is already submitted.", status=409,
-                           content_digest=dg.content_digest(doc))
-        if status != 0:
-            raise ERPError("erp_validation_failed", f"{doctype} {name} is cancelled and cannot be submitted.",
-                           status=409)
-        current = dg.approval_digest(doc)
-        if current != approved_digest:
-            raise ERPError("approval_stale", "The draft changed in the ERP after it was approved (its lines, "
-                           "totals or version). Review the current draft and approve it again.", status=409,
-                           current_digest=current)
-        before = dg.content_digest(doc)
+        # Reread and submit with the same (submit) credential, and post exactly the
+        # document just read: frappe.client.submit saves the posted copy and
+        # compares its `modified` under a row lock.
         transport = self.submit_transport_factory() if self.submit_transport_factory else self.wt
         try:
+            doc = transport.get_doc(doctype, name)
+            if doc is None or doc.get("company") != self.cfg.company:
+                raise ERPError("not_found", f"No {doctype} {name} here.", status=404)
+            status = int(doc.get("docstatus") or 0)
+            if status == 1:
+                raise ERPError("already_submitted", f"{doctype} {name} is already submitted.", status=409,
+                               content_digest=dg.content_digest(doc))
+            if status != 0:
+                raise ERPError("erp_validation_failed", f"{doctype} {name} is cancelled and cannot be submitted.",
+                               status=409)
+            if not doc.get("custom_hubzoid_operation_id"):
+                raise ERPError("submit_not_allowed", f"{doctype} {name} was not created by this desk, so it is "
+                               "submitted in the ERP by a person.", status=403)
+            current = dg.approval_digest(doc)
+            if current != approved_digest:
+                raise ERPError("approval_stale", "The draft changed in the ERP after it was approved (its lines, "
+                               "totals or version). Review the current draft and approve it again.", status=409,
+                               current_digest=current)
+            if self._workflow_active(transport, doctype):
+                raise ERPError("submit_not_allowed", f"{doctype} has an active ERPNext Workflow. Submit it through "
+                               "that workflow in the ERP.", status=409)
+            before = dg.content_digest(doc)
             transport.submit(doc)
         except Refused as exc:
             if exc.code == "stale_preview":
