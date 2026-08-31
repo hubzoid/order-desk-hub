@@ -1,0 +1,33 @@
+{
+ "event": "OID-A06",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Order PC-0051",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "Order PC-0051 attached. Synthetic Prairie Clinics (synthetic sample)",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  }
+ ],
+ "problems": [
+  {
+   "document": "PC-0051.pdf",
+   "code": "parse_failed",
+   "message": "PC-0051.pdf is damaged or not a PDF."
+  }
+ ],
+ "parsers": [
+  "text"
+ ]
+}

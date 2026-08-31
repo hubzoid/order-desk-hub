@@ -1,0 +1,48 @@
+{
+ "document_kind": "supplier_invoice",
+ "party_name_seen": "Synthetic Summit Beverages",
+ "bill_to_seen": {
+  "value": "Synthetic Meridian Distribution",
+  "source_ref": "E4"
+ },
+ "reference": {
+  "value": "SSB-2002",
+  "source_ref": "E2"
+ },
+ "document_date": {
+  "value": "2000-01-11",
+  "source_ref": "E5"
+ },
+ "delivery_date": null,
+ "due_date": {
+  "value": "2000-02-10",
+  "source_ref": "E6"
+ },
+ "purchase_order_refs": [
+  {
+   "value": "PUR-ORD-2000-00002",
+   "source_ref": "E7"
+  }
+ ],
+ "currency_seen": "USD",
+ "lines": [
+  {
+   "source_ref": "E8",
+   "raw_text": "SYN-ITEM-007 Espresso beans 1kg  200 Nos @ 12.75 = 2550.00",
+   "item_code_seen": "SYN-ITEM-007",
+   "description_seen": "Espresso beans 1kg",
+   "quantity": "200",
+   "unit_seen": "Nos",
+   "unit_price": "12.75",
+   "amount": "2550.00",
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": {
+  "value": "2550.00",
+  "source_ref": "E9"
+ },
+ "stated_tax": null,
+ "instructions_seen": false,
+ "notes": ""
+}

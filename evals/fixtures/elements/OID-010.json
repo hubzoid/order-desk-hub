@@ -1,0 +1,109 @@
+{
+ "event": "OID-010",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Invoice GCS-3002",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "A photo of invoice GCS-3002 is attached. Synthetic Granite Cleaning Supply (synthetic sample)",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3002.png line 1",
+   "page": 1,
+   "text": "synthetic sample image (distributor-v1)",
+   "id": "E3",
+   "doc": 2,
+   "doc_label": "GCS-3002.png"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3002.png line 2",
+   "page": 1,
+   "text": "SYNTHETIC SAMPLE INVOICE",
+   "id": "E4",
+   "doc": 2,
+   "doc_label": "GCS-3002.png"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3002.png line 3",
+   "page": 1,
+   "text": "Granite Cleaning Supply",
+   "id": "E5",
+   "doc": 2,
+   "doc_label": "GCS-3002.png"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3002.png line 4",
+   "page": 1,
+   "text": "Invoice GCS-3002",
+   "id": "E6",
+   "doc": 2,
+   "doc_label": "GCS-3002.png"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3002.png line 5",
+   "page": 1,
+   "text": "Bill to Synthetic Meridian Distribution",
+   "id": "E7",
+   "doc": 2,
+   "doc_label": "GCS-3002.png"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3002.png line 6",
+   "page": 1,
+   "text": "Date 2000-01-13 Due 2000-02-12",
+   "id": "E8",
+   "doc": 2,
+   "doc_label": "GCS-3002.png"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3002.png line 7",
+   "page": 1,
+   "text": "PO PUR-ORD-2000-00003",
+   "id": "E9",
+   "doc": 2,
+   "doc_label": "GCS-3002.png"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3002.png line 8",
+   "page": 1,
+   "text": "SYN-ITEM-004 × 250 @ 0.36 = 90.00",
+   "id": "E10",
+   "doc": 2,
+   "doc_label": "GCS-3002.png"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3002.png line 9",
+   "page": 1,
+   "text": "Total USD 90.00",
+   "id": "E11",
+   "doc": 2,
+   "doc_label": "GCS-3002.png"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text",
+  "docling 2.140.0"
+ ]
+}

@@ -1,0 +1,99 @@
+{
+ "event": "OID-008",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Invoice SSB-2002",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "INVOICE SSB-2002",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 4",
+   "line": 4,
+   "text": "From: Synthetic Summit Beverages",
+   "id": "E3",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 5",
+   "line": 5,
+   "text": "Bill to: Synthetic Meridian Distribution",
+   "id": "E4",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 6",
+   "line": 6,
+   "text": "Invoice date: 2000-01-11",
+   "id": "E5",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 7",
+   "line": 7,
+   "text": "Due date: 2000-02-10",
+   "id": "E6",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 8",
+   "line": 8,
+   "text": "Your PO: PUR-ORD-2000-00002",
+   "id": "E7",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 10",
+   "line": 10,
+   "text": "SYN-ITEM-007 Espresso beans 1kg  200 Nos @ 12.75 = 2550.00",
+   "id": "E8",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 12",
+   "line": 12,
+   "text": "Total USD 2550.00",
+   "id": "E9",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 13",
+   "line": 13,
+   "text": "(synthetic sample)",
+   "id": "E10",
+   "doc": 1,
+   "doc_label": "message"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text"
+ ]
+}

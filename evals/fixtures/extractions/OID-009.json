@@ -1,0 +1,51 @@
+{
+ "document_kind": "supplier_invoice",
+ "party_name_seen": "Synthetic Summit Beverages",
+ "bill_to_seen": {
+  "value": "Synthetic Meridian Distribution",
+  "source_ref": "E6"
+ },
+ "reference": {
+  "value": "SSB-2003",
+  "source_ref": "E7"
+ },
+ "document_date": {
+  "value": "2000-01-11",
+  "source_ref": "E8"
+ },
+ "delivery_date": null,
+ "due_date": {
+  "value": "2000-02-10",
+  "source_ref": "E9"
+ },
+ "purchase_order_refs": [
+  {
+   "value": "PUR-ORD-2000-00002",
+   "source_ref": "E10"
+  }
+ ],
+ "currency_seen": "USD",
+ "lines": [
+  {
+   "source_ref": "E12",
+   "raw_text": "SYN-ITEM-008 | Oat milk 1L | 30 | Nos | 1.40 | 42.00",
+   "item_code_seen": "SYN-ITEM-008",
+   "description_seen": "Oat milk 1L",
+   "quantity": "30",
+   "unit_seen": "Nos",
+   "unit_price": "1.40",
+   "amount": "42.00",
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": {
+  "value": "42.00",
+  "source_ref": "E14"
+ },
+ "stated_tax": {
+  "value": "0.00",
+  "source_ref": "E13"
+ },
+ "instructions_seen": false,
+ "notes": ""
+}

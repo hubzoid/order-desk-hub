@@ -1,0 +1,48 @@
+{
+ "document_kind": "customer_order",
+ "party_name_seen": "Alpine Hardware",
+ "bill_to_seen": null,
+ "reference": {
+  "value": "AH-3316",
+  "source_ref": "E2"
+ },
+ "document_date": {
+  "value": "2000-01-15",
+  "source_ref": "E2"
+ },
+ "delivery_date": {
+  "value": "2000-01-27",
+  "source_ref": "E2"
+ },
+ "due_date": null,
+ "purchase_order_refs": [],
+ "currency_seen": null,
+ "lines": [
+  {
+   "source_ref": "E3",
+   "raw_text": "80 x Synthetic Hex Bolt M8",
+   "item_code_seen": null,
+   "description_seen": "Synthetic Hex Bolt M8",
+   "quantity": "80",
+   "unit_seen": null,
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  },
+  {
+   "source_ref": "E4",
+   "raw_text": "10 x SYN-ITEM-006 ballpoint pens",
+   "item_code_seen": "SYN-ITEM-006",
+   "description_seen": "ballpoint pens",
+   "quantity": "10",
+   "unit_seen": null,
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": null,
+ "stated_tax": null,
+ "instructions_seen": false,
+ "notes": ""
+}

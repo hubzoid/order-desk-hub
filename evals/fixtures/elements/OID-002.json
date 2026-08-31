@@ -1,0 +1,163 @@
+{
+ "event": "OID-002",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: PO AH-3315 attached",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "Hi, our purchase order AH-3315 is attached as a PDF. Regards, Alpine Hardware (synthetic sample)",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "AH-3315.pdf page 1 line 1",
+   "page": 1,
+   "text": "SYNTHETIC SAMPLE DOCUMENT. Not a real order or invoice.",
+   "id": "E3",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "AH-3315.pdf page 1 line 2",
+   "page": 1,
+   "text": "PURCHASE ORDER",
+   "id": "E4",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "AH-3315.pdf page 1 line 3",
+   "page": 1,
+   "text": "Buyer: Synthetic Alpine Hardware",
+   "id": "E5",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "AH-3315.pdf page 1 line 4",
+   "page": 1,
+   "text": "PO number: AH-3315",
+   "id": "E6",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "AH-3315.pdf page 1 line 5",
+   "page": 1,
+   "text": "Order date: 2000-01-14",
+   "id": "E7",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "AH-3315.pdf page 1 line 6",
+   "page": 1,
+   "text": "Deliver by: 2000-01-24",
+   "id": "E8",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "AH-3315.pdf page 1 line 7",
+   "page": 1,
+   "text": "Ship to: Synthetic Alpine Hardware, 1 Example Way",
+   "id": "E9",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "row",
+   "loc": "AH-3315.pdf page 1 table 1 row 1",
+   "page": 1,
+   "row": 1,
+   "cells": [
+    "Our part",
+    "Description",
+    "Qty",
+    "Unit",
+    "Unit price",
+    "Amount"
+   ],
+   "text": "Our part | Description | Qty | Unit | Unit price | Amount",
+   "id": "E10",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "row",
+   "loc": "AH-3315.pdf page 1 table 1 row 2",
+   "page": 1,
+   "row": 2,
+   "cells": [
+    "AH-B840",
+    "Hex bolt M8 x 40 zinc",
+    "150",
+    "Nos",
+    "0.42",
+    "63.00"
+   ],
+   "text": "AH-B840 | Hex bolt M8 x 40 zinc | 150 | Nos | 0.42 | 63.00",
+   "id": "E11",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "row",
+   "loc": "AH-3315.pdf page 1 table 1 row 3",
+   "page": 1,
+   "row": 3,
+   "cells": [
+    "AH-GLV-M",
+    "Nitrile gloves size M",
+    "3",
+    "Box",
+    "8.50",
+    "25.50"
+   ],
+   "text": "AH-GLV-M | Nitrile gloves size M | 3 | Box | 8.50 | 25.50",
+   "id": "E12",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "AH-3315.pdf page 1 line 8",
+   "page": 1,
+   "text": "Total (USD)",
+   "id": "E13",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "AH-3315.pdf page 1 line 9",
+   "page": 1,
+   "text": "88.50",
+   "id": "E14",
+   "doc": 2,
+   "doc_label": "AH-3315.pdf"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text",
+  "docling 2.140.0"
+ ]
+}

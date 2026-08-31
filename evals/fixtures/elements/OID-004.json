@@ -1,0 +1,18 @@
+{
+ "event": "OID-004",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Hi Meridian, order CC-125 please, deliver 2000-01-19: 10 x SYN-ITEM-007 espresso beans, 2 box SYN-ITEM-008 oat milk. Thanks! (synthetic sample)",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text"
+ ]
+}

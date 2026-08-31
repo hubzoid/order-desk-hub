@@ -1,0 +1,48 @@
+{
+ "document_kind": "customer_order",
+ "party_name_seen": "Synthetic Harbor Foods",
+ "bill_to_seen": null,
+ "reference": {
+  "value": "HF-7010",
+  "source_ref": "E4"
+ },
+ "document_date": {
+  "value": "2000-01-14",
+  "source_ref": "E5"
+ },
+ "delivery_date": {
+  "value": "2000-01-21",
+  "source_ref": "E6"
+ },
+ "due_date": null,
+ "purchase_order_refs": [],
+ "currency_seen": null,
+ "lines": [
+  {
+   "source_ref": "E7",
+   "raw_text": "24 x SYN-ITEM-001 Synthetic Olive Oil 1L",
+   "item_code_seen": "SYN-ITEM-001",
+   "description_seen": "Synthetic Olive Oil 1L",
+   "quantity": "24",
+   "unit_seen": null,
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  },
+  {
+   "source_ref": "E8",
+   "raw_text": "12 x SYN-ITEM-003 Synthetic Dish Soap 500ml",
+   "item_code_seen": "SYN-ITEM-003",
+   "description_seen": "Synthetic Dish Soap",
+   "quantity": "12",
+   "unit_seen": null,
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": null,
+ "stated_tax": null,
+ "instructions_seen": false,
+ "notes": ""
+}

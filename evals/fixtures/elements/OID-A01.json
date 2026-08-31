@@ -1,0 +1,99 @@
+{
+ "event": "OID-A01",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Purchase order HF-7010",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "Hello Meridian team,",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 5",
+   "line": 5,
+   "text": "Please supply the following.",
+   "id": "E3",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 7",
+   "line": 7,
+   "text": "PO number: HF-7010",
+   "id": "E4",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 8",
+   "line": 8,
+   "text": "Order date: 2000-01-14",
+   "id": "E5",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 9",
+   "line": 9,
+   "text": "Deliver by: 2000-01-21",
+   "id": "E6",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 11",
+   "line": 11,
+   "text": "24 x SYN-ITEM-001 Synthetic Olive Oil 1L",
+   "id": "E7",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 12",
+   "line": 12,
+   "text": "12 x SYN-ITEM-003 Synthetic Dish Soap 500ml",
+   "id": "E8",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 14",
+   "line": 14,
+   "text": "Thank you,",
+   "id": "E9",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 15",
+   "line": 15,
+   "text": "Synthetic Harbor Foods purchasing (synthetic sample)",
+   "id": "E10",
+   "doc": 1,
+   "doc_label": "message"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text"
+ ]
+}

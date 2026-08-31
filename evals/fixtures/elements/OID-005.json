@@ -1,0 +1,128 @@
+{
+ "event": "OID-005",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Order HF-7011 photo",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "Our order list is attached as a photo. Synthetic Harbor Foods (synthetic sample)",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "HF-7011.png line 1",
+   "page": 1,
+   "text": "synthetic sample image (distributor-v1)",
+   "id": "E3",
+   "doc": 2,
+   "doc_label": "HF-7011.png"
+  },
+  {
+   "kind": "row",
+   "loc": "HF-7011.png page 1 table 1 row 1",
+   "page": 1,
+   "row": 1,
+   "cells": [
+    "SYNTHETIC SAMPLE"
+   ],
+   "text": "SYNTHETIC SAMPLE",
+   "id": "E4",
+   "doc": 2,
+   "doc_label": "HF-7011.png"
+  },
+  {
+   "kind": "row",
+   "loc": "HF-7011.png page 1 table 1 row 2",
+   "page": 1,
+   "row": 2,
+   "cells": [
+    "Harbor Foods order"
+   ],
+   "text": "Harbor Foods order",
+   "id": "E5",
+   "doc": 2,
+   "doc_label": "HF-7011.png"
+  },
+  {
+   "kind": "row",
+   "loc": "HF-7011.png page 1 table 1 row 3",
+   "page": 1,
+   "row": 3,
+   "cells": [
+    "PO HF-7011"
+   ],
+   "text": "PO HF-7011",
+   "id": "E6",
+   "doc": 2,
+   "doc_label": "HF-7011.png"
+  },
+  {
+   "kind": "row",
+   "loc": "HF-7011.png page 1 table 1 row 4",
+   "page": 1,
+   "row": 4,
+   "cells": [
+    "Deliver by 2000-01-25"
+   ],
+   "text": "Deliver by 2000-01-25",
+   "id": "E7",
+   "doc": 2,
+   "doc_label": "HF-7011.png"
+  },
+  {
+   "kind": "row",
+   "loc": "HF-7011.png page 1 table 1 row 5",
+   "page": 1,
+   "row": 5,
+   "cells": [
+    "SYN-ITEM-002 x 2 box"
+   ],
+   "text": "SYN-ITEM-002 x 2 box",
+   "id": "E8",
+   "doc": 2,
+   "doc_label": "HF-7011.png"
+  },
+  {
+   "kind": "row",
+   "loc": "HF-7011.png page 1 table 1 row 6",
+   "page": 1,
+   "row": 6,
+   "cells": [
+    "SYN-ITEM-007 × 6"
+   ],
+   "text": "SYN-ITEM-007 × 6",
+   "id": "E9",
+   "doc": 2,
+   "doc_label": "HF-7011.png"
+  },
+  {
+   "kind": "row",
+   "loc": "HF-7011.png page 1 table 1 row 7",
+   "page": 1,
+   "row": 7,
+   "cells": [
+    "SYN-ITEM-003 × 12"
+   ],
+   "text": "SYN-ITEM-003 × 12",
+   "id": "E10",
+   "doc": 2,
+   "doc_label": "HF-7011.png"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text",
+  "docling 2.140.0"
+ ]
+}

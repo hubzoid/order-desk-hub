@@ -1,0 +1,59 @@
+{
+ "document_kind": "supplier_invoice",
+ "party_name_seen": "Synthetic Northwind Paper Co",
+ "bill_to_seen": {
+  "value": "Synthetic Meridian Distribution",
+  "source_ref": "E5"
+ },
+ "reference": {
+  "value": "SNP-INV-0913",
+  "source_ref": "E6"
+ },
+ "document_date": {
+  "value": "2000-01-12",
+  "source_ref": "E7"
+ },
+ "delivery_date": null,
+ "due_date": {
+  "value": "2000-02-11",
+  "source_ref": "E8"
+ },
+ "purchase_order_refs": [
+  {
+   "value": "PUR-ORD-2000-00001",
+   "source_ref": "E9"
+  }
+ ],
+ "currency_seen": "USD",
+ "lines": [
+  {
+   "source_ref": "E11",
+   "raw_text": "SYN-ITEM-006 | Ballpoint pens | 50 | Nos | 0.31 | 15.50",
+   "item_code_seen": "SYN-ITEM-006",
+   "description_seen": "Ballpoint pens",
+   "quantity": "50",
+   "unit_seen": "Nos",
+   "unit_price": "0.31",
+   "amount": "15.50",
+   "purchase_order_seen": null
+  },
+  {
+   "source_ref": "E12",
+   "raw_text": "SYN-ITEM-002 | Paper towels | 20 | Nos | 1.10 | 22.00",
+   "item_code_seen": "SYN-ITEM-002",
+   "description_seen": "Paper towels",
+   "quantity": "20",
+   "unit_seen": "Nos",
+   "unit_price": "1.10",
+   "amount": "22.00",
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": {
+  "value": "37.50",
+  "source_ref": "E13"
+ },
+ "stated_tax": null,
+ "instructions_seen": false,
+ "notes": ""
+}

@@ -1,0 +1,70 @@
+{
+ "document_kind": "customer_order",
+ "party_name_seen": "Synthetic Prairie Clinics",
+ "bill_to_seen": null,
+ "reference": {
+  "value": "PC-0050",
+  "source_ref": "E5"
+ },
+ "document_date": {
+  "value": "2000-01-14",
+  "source_ref": "E6"
+ },
+ "delivery_date": {
+  "value": "2000-01-26",
+  "source_ref": "E7"
+ },
+ "due_date": null,
+ "purchase_order_refs": [],
+ "currency_seen": null,
+ "lines": [
+  {
+   "source_ref": "E9",
+   "raw_text": "SYN-ITEM-004 | Nitrile gloves M | 40 | Nos",
+   "item_code_seen": "SYN-ITEM-004",
+   "description_seen": "Nitrile gloves M",
+   "quantity": "40",
+   "unit_seen": "Nos",
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  },
+  {
+   "source_ref": "E10",
+   "raw_text": "SYN-ITEM-005 | Copy paper A4 | 5 | Box",
+   "item_code_seen": "SYN-ITEM-005",
+   "description_seen": "Copy paper A4",
+   "quantity": "5",
+   "unit_seen": "Box",
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  },
+  {
+   "source_ref": "E11",
+   "raw_text": "SYN-ITEM-006 | Ballpoint pens | 24 | Nos",
+   "item_code_seen": "SYN-ITEM-006",
+   "description_seen": "Ballpoint pens",
+   "quantity": "24",
+   "unit_seen": "Nos",
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  },
+  {
+   "source_ref": "E12",
+   "raw_text": "SYN-ITEM-003 | Dish soap 500ml | 6 | Nos",
+   "item_code_seen": "SYN-ITEM-003",
+   "description_seen": "Dish soap 500ml",
+   "quantity": "6",
+   "unit_seen": "Nos",
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": null,
+ "stated_tax": null,
+ "instructions_seen": false,
+ "notes": ""
+}

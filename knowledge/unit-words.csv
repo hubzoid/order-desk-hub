@@ -1,0 +1,11 @@
+word,uom,source_ref
+nos,Nos,ERPNext unit name
+no,Nos,common abbreviation
+each,Nos,common word
+ea,Nos,common abbreviation
+pc,Nos,common abbreviation
+pcs,Nos,common abbreviation
+piece,Nos,common word
+unit,Nos,common word
+box,Box,ERPNext unit name
+bx,Box,common abbreviation

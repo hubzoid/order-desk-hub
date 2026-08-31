@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Order and invoice extraction",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "document_kind",
+    "party_name_seen",
+    "bill_to_seen",
+    "reference",
+    "document_date",
+    "delivery_date",
+    "due_date",
+    "purchase_order_refs",
+    "currency_seen",
+    "lines",
+    "stated_total",
+    "stated_tax",
+    "instructions_seen",
+    "notes"
+  ],
+  "properties": {
+    "document_kind": {
+      "type": "string",
+      "enum": [
+        "customer_order",
+        "supplier_invoice",
+        "credit_note",
+        "other"
+      ]
+    },
+    "party_name_seen": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "bill_to_seen": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source_ref"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "source_ref": {
+          "type": "string",
+          "pattern": "^E[0-9]+$"
+        }
+      }
+    },
+    "reference": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source_ref"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "source_ref": {
+          "type": "string",
+          "pattern": "^E[0-9]+$"
+        }
+      }
+    },
+    "document_date": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source_ref"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "source_ref": {
+          "type": "string",
+          "pattern": "^E[0-9]+$"
+        }
+      }
+    },
+    "delivery_date": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source_ref"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "source_ref": {
+          "type": "string",
+          "pattern": "^E[0-9]+$"
+        }
+      }
+    },
+    "due_date": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source_ref"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "source_ref": {
+          "type": "string",
+          "pattern": "^E[0-9]+$"
+        }
+      }
+    },
+    "purchase_order_refs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "value",
+          "source_ref"
+        ],
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "source_ref": {
+            "type": "string",
+            "pattern": "^E[0-9]+$"
+          }
+        }
+      },
+      "maxItems": 20
+    },
+    "currency_seen": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source_ref",
+          "raw_text",
+          "item_code_seen",
+          "description_seen",
+          "quantity",
+          "unit_seen",
+          "unit_price",
+          "amount",
+          "purchase_order_seen"
+        ],
+        "properties": {
+          "source_ref": {
+            "type": "string",
+            "pattern": "^E[0-9]+$"
+          },
+          "raw_text": {
+            "type": "string"
+          },
+          "item_code_seen": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description_seen": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unit_seen": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unit_price": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "amount": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "purchase_order_seen": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "maxItems": 200
+    },
+    "stated_total": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source_ref"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "source_ref": {
+          "type": "string",
+          "pattern": "^E[0-9]+$"
+        }
+      }
+    },
+    "stated_tax": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "source_ref"
+      ],
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "source_ref": {
+          "type": "string",
+          "pattern": "^E[0-9]+$"
+        }
+      }
+    },
+    "instructions_seen": {
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}

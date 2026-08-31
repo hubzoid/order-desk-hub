@@ -1,0 +1,56 @@
+{
+ "document_kind": "customer_order",
+ "party_name_seen": "Synthetic Harbor Foods",
+ "bill_to_seen": null,
+ "reference": {
+  "value": "HF-7011",
+  "source_ref": "E6"
+ },
+ "document_date": null,
+ "delivery_date": {
+  "value": "2000-01-25",
+  "source_ref": "E7"
+ },
+ "due_date": null,
+ "purchase_order_refs": [],
+ "currency_seen": null,
+ "lines": [
+  {
+   "source_ref": "E8",
+   "raw_text": "SYN-ITEM-002 x 2 box",
+   "item_code_seen": "SYN-ITEM-002",
+   "description_seen": null,
+   "quantity": "2",
+   "unit_seen": "box",
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  },
+  {
+   "source_ref": "E9",
+   "raw_text": "SYN-ITEM-007 × 6",
+   "item_code_seen": "SYN-ITEM-007",
+   "description_seen": null,
+   "quantity": "6",
+   "unit_seen": null,
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  },
+  {
+   "source_ref": "E10",
+   "raw_text": "SYN-ITEM-003 × 12",
+   "item_code_seen": "SYN-ITEM-003",
+   "description_seen": null,
+   "quantity": "12",
+   "unit_seen": null,
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": null,
+ "stated_tax": null,
+ "instructions_seen": false,
+ "notes": ""
+}

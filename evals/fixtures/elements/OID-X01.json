@@ -1,0 +1,81 @@
+{
+ "event": "OID-X01",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Purchase order HF-7012",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "Hello again,",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 5",
+   "line": 5,
+   "text": "PO number: HF-7012",
+   "id": "E3",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 6",
+   "line": 6,
+   "text": "Order date: 2000-01-15",
+   "id": "E4",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 7",
+   "line": 7,
+   "text": "Deliver by: 2000-01-28",
+   "id": "E5",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 9",
+   "line": 9,
+   "text": "2 cartons SYN-ITEM-001 Synthetic Olive Oil 1L",
+   "id": "E6",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 10",
+   "line": 10,
+   "text": "6 x SYN-ITEM-003 Synthetic Dish Soap 500ml",
+   "id": "E7",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 12",
+   "line": 12,
+   "text": "Synthetic Harbor Foods purchasing (synthetic sample)",
+   "id": "E8",
+   "doc": 1,
+   "doc_label": "message"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text"
+ ]
+}

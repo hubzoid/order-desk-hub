@@ -1,0 +1,90 @@
+{
+ "event": "OID-A05",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Invoice GCS-3010",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "INVOICE GCS-3010",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 4",
+   "line": 4,
+   "text": "From: Synthetic Granite Cleaning Supply",
+   "id": "E3",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 5",
+   "line": 5,
+   "text": "Bill to: Synthetic Other Holdings",
+   "id": "E4",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 6",
+   "line": 6,
+   "text": "Invoice date: 2000-01-14",
+   "id": "E5",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 7",
+   "line": 7,
+   "text": "Due date: 2000-02-13",
+   "id": "E6",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 9",
+   "line": 9,
+   "text": "SYN-ITEM-012 Floor cleaner 5L  2 Nos @ 19.00 = 38.00",
+   "id": "E7",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 10",
+   "line": 10,
+   "text": "Total USD 38.00",
+   "id": "E8",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 11",
+   "line": 11,
+   "text": "(synthetic sample)",
+   "id": "E9",
+   "doc": 1,
+   "doc_label": "message"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text"
+ ]
+}

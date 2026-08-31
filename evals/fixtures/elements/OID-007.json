@@ -1,0 +1,197 @@
+{
+ "event": "OID-007",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Invoice SNP-INV-0913",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "Invoice SNP-INV-0913 is attached as a spreadsheet. Synthetic Northwind Paper Co (synthetic sample)",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A1:A1",
+   "sheet": "Invoice",
+   "row": 1,
+   "cells": [
+    "SYNTHETIC SAMPLE DOCUMENT. Not a real order or invoice."
+   ],
+   "text": "SYNTHETIC SAMPLE DOCUMENT. Not a real order or invoice.",
+   "id": "E3",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A2:B2",
+   "sheet": "Invoice",
+   "row": 2,
+   "cells": [
+    "Supplier",
+    "Synthetic Northwind Paper Co"
+   ],
+   "text": "Supplier | Synthetic Northwind Paper Co",
+   "id": "E4",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A3:B3",
+   "sheet": "Invoice",
+   "row": 3,
+   "cells": [
+    "Bill to",
+    "Synthetic Meridian Distribution"
+   ],
+   "text": "Bill to | Synthetic Meridian Distribution",
+   "id": "E5",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A4:B4",
+   "sheet": "Invoice",
+   "row": 4,
+   "cells": [
+    "Invoice number",
+    "SNP-INV-0913"
+   ],
+   "text": "Invoice number | SNP-INV-0913",
+   "id": "E6",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A5:B5",
+   "sheet": "Invoice",
+   "row": 5,
+   "cells": [
+    "Invoice date",
+    "2000-01-12"
+   ],
+   "text": "Invoice date | 2000-01-12",
+   "id": "E7",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A6:B6",
+   "sheet": "Invoice",
+   "row": 6,
+   "cells": [
+    "Due date",
+    "2000-02-11"
+   ],
+   "text": "Due date | 2000-02-11",
+   "id": "E8",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A7:B7",
+   "sheet": "Invoice",
+   "row": 7,
+   "cells": [
+    "Your PO",
+    "PUR-ORD-2000-00001"
+   ],
+   "text": "Your PO | PUR-ORD-2000-00001",
+   "id": "E9",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A9:F9",
+   "sheet": "Invoice",
+   "row": 9,
+   "cells": [
+    "Item",
+    "Description",
+    "Qty",
+    "Unit",
+    "Unit price",
+    "Amount"
+   ],
+   "text": "Item | Description | Qty | Unit | Unit price | Amount",
+   "id": "E10",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A10:F10",
+   "sheet": "Invoice",
+   "row": 10,
+   "cells": [
+    "SYN-ITEM-006",
+    "Ballpoint pens",
+    "50",
+    "Nos",
+    "0.31",
+    "15.50"
+   ],
+   "text": "SYN-ITEM-006 | Ballpoint pens | 50 | Nos | 0.31 | 15.50",
+   "id": "E11",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A11:F11",
+   "sheet": "Invoice",
+   "row": 11,
+   "cells": [
+    "SYN-ITEM-002",
+    "Paper towels",
+    "20",
+    "Nos",
+    "1.10",
+    "22.00"
+   ],
+   "text": "SYN-ITEM-002 | Paper towels | 20 | Nos | 1.10 | 22.00",
+   "id": "E12",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "SNP-INV-0913.xlsx Invoice!A12:F12",
+   "sheet": "Invoice",
+   "row": 12,
+   "cells": [
+    "",
+    "",
+    "",
+    "",
+    "Total (USD)",
+    "37.50"
+   ],
+   "text": " |  |  |  | Total (USD) | 37.50",
+   "id": "E13",
+   "doc": 2,
+   "doc_label": "SNP-INV-0913.xlsx"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text",
+  "openpyxl"
+ ]
+}

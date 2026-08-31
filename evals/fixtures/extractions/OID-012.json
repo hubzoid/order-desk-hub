@@ -1,0 +1,51 @@
+{
+ "document_kind": "supplier_invoice",
+ "party_name_seen": "Synthetic Granite Cleaning Supply",
+ "bill_to_seen": {
+  "value": "Synthetic Meridian Distribution",
+  "source_ref": "E6"
+ },
+ "reference": {
+  "value": "GCS-3003",
+  "source_ref": "E7"
+ },
+ "document_date": {
+  "value": "2000-01-13",
+  "source_ref": "E8"
+ },
+ "delivery_date": null,
+ "due_date": {
+  "value": "2000-02-12",
+  "source_ref": "E9"
+ },
+ "purchase_order_refs": [
+  {
+   "value": "PUR-ORD-2000-00003",
+   "source_ref": "E10"
+  }
+ ],
+ "currency_seen": "USD",
+ "lines": [
+  {
+   "source_ref": "E12",
+   "raw_text": "SYN-ITEM-012 | Floor cleaner 5L | 50 | Nos | 19.00 | 950.00",
+   "item_code_seen": "SYN-ITEM-012",
+   "description_seen": "Floor cleaner 5L",
+   "quantity": "50",
+   "unit_seen": "Nos",
+   "unit_price": "19.00",
+   "amount": "950.00",
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": {
+  "value": "950.00",
+  "source_ref": "E13"
+ },
+ "stated_tax": {
+  "value": "0.00",
+  "source_ref": "E13"
+ },
+ "instructions_seen": false,
+ "notes": ""
+}

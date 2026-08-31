@@ -1,0 +1,45 @@
+{
+ "document_kind": "customer_order",
+ "party_name_seen": null,
+ "bill_to_seen": null,
+ "reference": {
+  "value": "CC-125",
+  "source_ref": "E2"
+ },
+ "document_date": null,
+ "delivery_date": {
+  "value": "2000-01-19",
+  "source_ref": "E2"
+ },
+ "due_date": null,
+ "purchase_order_refs": [],
+ "currency_seen": null,
+ "lines": [
+  {
+   "source_ref": "E2",
+   "raw_text": "Hi Meridian, order CC-125 please, deliver 2000-01-19: 10 x SYN-ITEM-007 espresso beans, 2 box SYN-ITEM-008 oat milk. Thanks! (synthetic sample, also sent by WhatsApp)",
+   "item_code_seen": "SYN-ITEM-007",
+   "description_seen": "espresso beans",
+   "quantity": "10",
+   "unit_seen": null,
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  },
+  {
+   "source_ref": "E2",
+   "raw_text": "Hi Meridian, order CC-125 please, deliver 2000-01-19: 10 x SYN-ITEM-007 espresso beans, 2 box SYN-ITEM-008 oat milk. Thanks! (synthetic sample, also sent by WhatsApp)",
+   "item_code_seen": "SYN-ITEM-008",
+   "description_seen": "oat milk",
+   "quantity": "2",
+   "unit_seen": "box",
+   "unit_price": null,
+   "amount": null,
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": null,
+ "stated_tax": null,
+ "instructions_seen": false,
+ "notes": ""
+}

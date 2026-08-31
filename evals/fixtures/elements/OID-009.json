@@ -1,0 +1,172 @@
+{
+ "event": "OID-009",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Invoice SSB-2003",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "Invoice SSB-2003 attached. Synthetic Summit Beverages (synthetic sample)",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "SSB-2003.pdf page 1 line 1",
+   "page": 1,
+   "text": "SYNTHETIC SAMPLE DOCUMENT. Not a real order or invoice.",
+   "id": "E3",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "SSB-2003.pdf page 1 line 2",
+   "page": 1,
+   "text": "INVOICE",
+   "id": "E4",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "SSB-2003.pdf page 1 line 3",
+   "page": 1,
+   "text": "From: Synthetic Summit Beverages",
+   "id": "E5",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "SSB-2003.pdf page 1 line 4",
+   "page": 1,
+   "text": "Bill to: Synthetic Meridian Distribution",
+   "id": "E6",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "SSB-2003.pdf page 1 line 5",
+   "page": 1,
+   "text": "Invoice number: SSB-2003",
+   "id": "E7",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "SSB-2003.pdf page 1 line 6",
+   "page": 1,
+   "text": "Invoice date: 2000-01-11",
+   "id": "E8",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "SSB-2003.pdf page 1 line 7",
+   "page": 1,
+   "text": "Due date: 2000-02-10",
+   "id": "E9",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "SSB-2003.pdf page 1 line 8",
+   "page": 1,
+   "text": "Your PO: PUR-ORD-2000-00002",
+   "id": "E10",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "row",
+   "loc": "SSB-2003.pdf page 1 table 1 row 1",
+   "page": 1,
+   "row": 1,
+   "cells": [
+    "Item",
+    "Description",
+    "Qty",
+    "Unit",
+    "Unit price",
+    "Amount"
+   ],
+   "text": "Item | Description | Qty | Unit | Unit price | Amount",
+   "id": "E11",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "row",
+   "loc": "SSB-2003.pdf page 1 table 1 row 2",
+   "page": 1,
+   "row": 2,
+   "cells": [
+    "SYN-ITEM-008",
+    "Oat milk 1L",
+    "30",
+    "Nos",
+    "1.40",
+    "42.00"
+   ],
+   "text": "SYN-ITEM-008 | Oat milk 1L | 30 | Nos | 1.40 | 42.00",
+   "id": "E12",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "row",
+   "loc": "SSB-2003.pdf page 1 table 1 row 3",
+   "page": 1,
+   "row": 3,
+   "cells": [
+    "",
+    "",
+    "",
+    "Subtotal Tax",
+    "",
+    "42.00 0.00"
+   ],
+   "text": " |  |  | Subtotal Tax |  | 42.00 0.00",
+   "id": "E13",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  },
+  {
+   "kind": "row",
+   "loc": "SSB-2003.pdf page 1 table 1 row 4",
+   "page": 1,
+   "row": 4,
+   "cells": [
+    "",
+    "",
+    "",
+    "Total (USD)",
+    "",
+    "42.00"
+   ],
+   "text": " |  |  | Total (USD) |  | 42.00",
+   "id": "E14",
+   "doc": 2,
+   "doc_label": "SSB-2003.pdf"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text",
+  "docling 2.140.0"
+ ]
+}

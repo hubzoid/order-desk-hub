@@ -1,0 +1,51 @@
+{
+ "document_kind": "customer_order",
+ "party_name_seen": "Synthetic Alpine Hardware",
+ "bill_to_seen": null,
+ "reference": {
+  "value": "AH-3315",
+  "source_ref": "E6"
+ },
+ "document_date": {
+  "value": "2000-01-14",
+  "source_ref": "E7"
+ },
+ "delivery_date": {
+  "value": "2000-01-24",
+  "source_ref": "E8"
+ },
+ "due_date": null,
+ "purchase_order_refs": [],
+ "currency_seen": "USD",
+ "lines": [
+  {
+   "source_ref": "E11",
+   "raw_text": "AH-B840 | Hex bolt M8 x 40 zinc | 150 | Nos | 0.42 | 63.00",
+   "item_code_seen": "AH-B840",
+   "description_seen": "Hex bolt M8 x 40 zinc",
+   "quantity": "150",
+   "unit_seen": "Nos",
+   "unit_price": "0.42",
+   "amount": "63.00",
+   "purchase_order_seen": null
+  },
+  {
+   "source_ref": "E12",
+   "raw_text": "AH-GLV-M | Nitrile gloves size M | 3 | Box | 8.50 | 25.50",
+   "item_code_seen": "AH-GLV-M",
+   "description_seen": "Nitrile gloves size M",
+   "quantity": "3",
+   "unit_seen": "Box",
+   "unit_price": "8.50",
+   "amount": "25.50",
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": {
+  "value": "88.50",
+  "source_ref": "E14"
+ },
+ "stated_tax": null,
+ "instructions_seen": false,
+ "notes": ""
+}

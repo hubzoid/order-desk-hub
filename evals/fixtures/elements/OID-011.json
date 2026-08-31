@@ -1,0 +1,54 @@
+{
+ "event": "OID-011",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Order AH-3316",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "Hi, PO AH-3316, order date 2000-01-15, deliver by 2000-01-27:",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 4",
+   "line": 4,
+   "text": "80 x Synthetic Hex Bolt M8",
+   "id": "E3",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 5",
+   "line": 5,
+   "text": "10 x SYN-ITEM-006 ballpoint pens",
+   "id": "E4",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 6",
+   "line": 6,
+   "text": "Thanks, Alpine Hardware (synthetic sample)",
+   "id": "E5",
+   "doc": 1,
+   "doc_label": "message"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text"
+ ]
+}

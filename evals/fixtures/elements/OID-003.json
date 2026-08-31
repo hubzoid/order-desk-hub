@@ -1,0 +1,177 @@
+{
+ "event": "OID-003",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Order PC-0050 (spreadsheet)",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "Please see the attached order sheet for PO PC-0050. Synthetic Prairie Clinics (synthetic sample)",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "row",
+   "loc": "PC-0050.xlsx Order!A1:A1",
+   "sheet": "Order",
+   "row": 1,
+   "cells": [
+    "SYNTHETIC SAMPLE DOCUMENT. Not a real order or invoice."
+   ],
+   "text": "SYNTHETIC SAMPLE DOCUMENT. Not a real order or invoice.",
+   "id": "E3",
+   "doc": 2,
+   "doc_label": "PC-0050.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "PC-0050.xlsx Order!A2:B2",
+   "sheet": "Order",
+   "row": 2,
+   "cells": [
+    "Customer",
+    "Synthetic Prairie Clinics"
+   ],
+   "text": "Customer | Synthetic Prairie Clinics",
+   "id": "E4",
+   "doc": 2,
+   "doc_label": "PC-0050.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "PC-0050.xlsx Order!A3:B3",
+   "sheet": "Order",
+   "row": 3,
+   "cells": [
+    "PO number",
+    "PC-0050"
+   ],
+   "text": "PO number | PC-0050",
+   "id": "E5",
+   "doc": 2,
+   "doc_label": "PC-0050.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "PC-0050.xlsx Order!A4:B4",
+   "sheet": "Order",
+   "row": 4,
+   "cells": [
+    "Order date",
+    "2000-01-14"
+   ],
+   "text": "Order date | 2000-01-14",
+   "id": "E6",
+   "doc": 2,
+   "doc_label": "PC-0050.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "PC-0050.xlsx Order!A5:B5",
+   "sheet": "Order",
+   "row": 5,
+   "cells": [
+    "Deliver by",
+    "2000-01-26"
+   ],
+   "text": "Deliver by | 2000-01-26",
+   "id": "E7",
+   "doc": 2,
+   "doc_label": "PC-0050.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "PC-0050.xlsx Order!A7:D7",
+   "sheet": "Order",
+   "row": 7,
+   "cells": [
+    "Item code",
+    "Description",
+    "Qty",
+    "UOM"
+   ],
+   "text": "Item code | Description | Qty | UOM",
+   "id": "E8",
+   "doc": 2,
+   "doc_label": "PC-0050.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "PC-0050.xlsx Order!A8:D8",
+   "sheet": "Order",
+   "row": 8,
+   "cells": [
+    "SYN-ITEM-004",
+    "Nitrile gloves M",
+    "40",
+    "Nos"
+   ],
+   "text": "SYN-ITEM-004 | Nitrile gloves M | 40 | Nos",
+   "id": "E9",
+   "doc": 2,
+   "doc_label": "PC-0050.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "PC-0050.xlsx Order!A9:D9",
+   "sheet": "Order",
+   "row": 9,
+   "cells": [
+    "SYN-ITEM-005",
+    "Copy paper A4",
+    "5",
+    "Box"
+   ],
+   "text": "SYN-ITEM-005 | Copy paper A4 | 5 | Box",
+   "id": "E10",
+   "doc": 2,
+   "doc_label": "PC-0050.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "PC-0050.xlsx Order!A10:D10",
+   "sheet": "Order",
+   "row": 10,
+   "cells": [
+    "SYN-ITEM-006",
+    "Ballpoint pens",
+    "24",
+    "Nos"
+   ],
+   "text": "SYN-ITEM-006 | Ballpoint pens | 24 | Nos",
+   "id": "E11",
+   "doc": 2,
+   "doc_label": "PC-0050.xlsx"
+  },
+  {
+   "kind": "row",
+   "loc": "PC-0050.xlsx Order!A11:D11",
+   "sheet": "Order",
+   "row": 11,
+   "cells": [
+    "SYN-ITEM-003",
+    "Dish soap 500ml",
+    "6",
+    "Nos"
+   ],
+   "text": "SYN-ITEM-003 | Dish soap 500ml | 6 | Nos",
+   "id": "E12",
+   "doc": 2,
+   "doc_label": "PC-0050.xlsx"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text",
+  "openpyxl"
+ ]
+}

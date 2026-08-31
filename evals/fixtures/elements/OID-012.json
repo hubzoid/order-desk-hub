@@ -1,0 +1,154 @@
+{
+ "event": "OID-012",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Invoice GCS-3003",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "Invoice GCS-3003 attached. Synthetic Granite Cleaning Supply (synthetic sample)",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3003.pdf page 1 line 1",
+   "page": 1,
+   "text": "SYNTHETIC SAMPLE DOCUMENT. Not a real order or invoice.",
+   "id": "E3",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3003.pdf page 1 line 2",
+   "page": 1,
+   "text": "INVOICE",
+   "id": "E4",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3003.pdf page 1 line 3",
+   "page": 1,
+   "text": "From: Synthetic Granite Cleaning Supply",
+   "id": "E5",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3003.pdf page 1 line 4",
+   "page": 1,
+   "text": "Bill to: Synthetic Meridian Distribution",
+   "id": "E6",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3003.pdf page 1 line 5",
+   "page": 1,
+   "text": "Invoice number: GCS-3003",
+   "id": "E7",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3003.pdf page 1 line 6",
+   "page": 1,
+   "text": "Invoice date: 2000-01-13",
+   "id": "E8",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3003.pdf page 1 line 7",
+   "page": 1,
+   "text": "Due date: 2000-02-12",
+   "id": "E9",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  },
+  {
+   "kind": "text",
+   "loc": "GCS-3003.pdf page 1 line 8",
+   "page": 1,
+   "text": "Your PO: PUR-ORD-2000-00003",
+   "id": "E10",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  },
+  {
+   "kind": "row",
+   "loc": "GCS-3003.pdf page 1 table 1 row 1",
+   "page": 1,
+   "row": 1,
+   "cells": [
+    "Item",
+    "Description",
+    "Qty",
+    "Unit",
+    "Unit price",
+    "Amount"
+   ],
+   "text": "Item | Description | Qty | Unit | Unit price | Amount",
+   "id": "E11",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  },
+  {
+   "kind": "row",
+   "loc": "GCS-3003.pdf page 1 table 1 row 2",
+   "page": 1,
+   "row": 2,
+   "cells": [
+    "SYN-ITEM-012",
+    "Floor cleaner 5L",
+    "50",
+    "Nos",
+    "19.00",
+    "950.00"
+   ],
+   "text": "SYN-ITEM-012 | Floor cleaner 5L | 50 | Nos | 19.00 | 950.00",
+   "id": "E12",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  },
+  {
+   "kind": "row",
+   "loc": "GCS-3003.pdf page 1 table 1 row 3",
+   "page": 1,
+   "row": 3,
+   "cells": [
+    "",
+    "",
+    "",
+    "Subtotal Tax Total (USD)",
+    "",
+    "950.00 0.00 950.00"
+   ],
+   "text": " |  |  | Subtotal Tax Total (USD) |  | 950.00 0.00 950.00",
+   "id": "E13",
+   "doc": 2,
+   "doc_label": "GCS-3003.pdf"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text",
+  "docling 2.140.0"
+ ]
+}

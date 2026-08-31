@@ -1,0 +1,48 @@
+{
+ "document_kind": "supplier_invoice",
+ "party_name_seen": "Synthetic Northwind Paper Co",
+ "bill_to_seen": {
+  "value": "Synthetic Meridian Distribution",
+  "source_ref": "E6"
+ },
+ "reference": {
+  "value": "SNP-INV-0960",
+  "source_ref": "E7"
+ },
+ "document_date": {
+  "value": "2000-01-14",
+  "source_ref": "E8"
+ },
+ "delivery_date": null,
+ "due_date": {
+  "value": "2000-01-15",
+  "source_ref": "E9"
+ },
+ "purchase_order_refs": [
+  {
+   "value": "PUR-ORD-2000-00004",
+   "source_ref": "E10"
+  }
+ ],
+ "currency_seen": "USD",
+ "lines": [
+  {
+   "source_ref": "E12",
+   "raw_text": "SYN-ITEM-005 | Copy paper A4 ream | 60 | Nos | 3.70 | 222.00",
+   "item_code_seen": "SYN-ITEM-005",
+   "description_seen": "Copy paper A4 ream",
+   "quantity": "60",
+   "unit_seen": "Nos",
+   "unit_price": "3.70",
+   "amount": "222.00",
+   "purchase_order_seen": null
+  }
+ ],
+ "stated_total": {
+  "value": "222.00",
+  "source_ref": "E13"
+ },
+ "stated_tax": null,
+ "instructions_seen": true,
+ "notes": ""
+}

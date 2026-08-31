@@ -1,0 +1,99 @@
+{
+ "event": "OID-A07",
+ "elements": [
+  {
+   "kind": "text",
+   "loc": "message line 1",
+   "line": 1,
+   "text": "Subject: Invoice SNP-INV-0901",
+   "id": "E1",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 3",
+   "line": 3,
+   "text": "INVOICE SNP-INV-0901",
+   "id": "E2",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 4",
+   "line": 4,
+   "text": "From: Synthetic Northwind Paper Co",
+   "id": "E3",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 5",
+   "line": 5,
+   "text": "Bill to: Synthetic Meridian Distribution",
+   "id": "E4",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 6",
+   "line": 6,
+   "text": "Invoice date: 2000-01-08",
+   "id": "E5",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 7",
+   "line": 7,
+   "text": "Due date: 2000-02-07",
+   "id": "E6",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 8",
+   "line": 8,
+   "text": "Your PO: PUR-ORD-2000-00001",
+   "id": "E7",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 10",
+   "line": 10,
+   "text": "SYN-ITEM-005 Copy paper A4 ream  40 Nos @ 3.70 = 148.00",
+   "id": "E8",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 11",
+   "line": 11,
+   "text": "Total USD 148.00",
+   "id": "E9",
+   "doc": 1,
+   "doc_label": "message"
+  },
+  {
+   "kind": "text",
+   "loc": "message line 12",
+   "line": 12,
+   "text": "(synthetic sample)",
+   "id": "E10",
+   "doc": 1,
+   "doc_label": "message"
+  }
+ ],
+ "problems": [],
+ "parsers": [
+  "text"
+ ]
+}
