@@ -1,0 +1,12 @@
+version: 1
+work_items:
+  max_input_bytes: 1048576
+  stations:
+    orchestrator_retries: 1
+    recovery_attempts: 1
+    timeout_seconds: 600
+write_modes:
+  # off: no ERP write. draft: inert ERP drafts (docstatus 0) a person finishes in the ERP.
+  # approve: drafts, and submission after the requester approves the exact draft.
+  # The sample starts in draft mode on the synthetic sample backend. Use "off" until a real ERP is connected.
+  erp.submit: draft

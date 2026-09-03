@@ -1,0 +1,42 @@
+version: 1
+settings:
+  - name: DESK_SOURCES
+    description: Where documents may come from (upload, email, whatsapp).
+    type: string_list
+    default: [upload]
+  - name: DESK_INTAKE_ENABLED
+    description: Turn new triage off without losing incoming messages.
+    type: boolean
+    default: true
+  - name: DESK_POLICY_FILES
+    description: The two policy files.
+    type: string_list
+    default: [knowledge/order-policy.md, knowledge/invoice-policy.md]
+  - name: DESK_ALIASES_FILE
+    description: The item and unit alias rows.
+    type: string
+    default: knowledge/sku-aliases.csv
+  - name: DESK_MAX_FILE_BYTES
+    description: The largest document accepted.
+    type: integer
+    default: 20971520
+    minimum: 1
+    maximum: 20971520
+  - name: DESK_MAX_PAGES
+    description: The most pages read from one PDF.
+    type: integer
+    default: 100
+    minimum: 1
+    maximum: 100
+  - name: DESK_MAX_LINES
+    description: The most lines in one draft.
+    type: integer
+    default: 200
+    minimum: 1
+    maximum: 200
+  - name: DESK_PARSE_TIMEOUT_SECONDS
+    description: How long one document may take to parse.
+    type: integer
+    default: 180
+    minimum: 10
+    maximum: 180

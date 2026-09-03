@@ -1,0 +1,22 @@
+version: 1
+doctor:
+  - id: desk.rules
+    entrypoint: doctor/desk.py:rules
+    required: true
+  - id: desk.erp
+    entrypoint: doctor/desk.py:erp
+    timeout_seconds: 30
+    required: true
+  - id: desk.write_mode
+    entrypoint: doctor/desk.py:write_mode
+    timeout_seconds: 30
+    required: true
+  - id: desk.approval_card
+    entrypoint: doctor/desk.py:approval_card
+    required: true
+  - id: desk.intake
+    entrypoint: doctor/desk.py:intake
+  - id: desk.parser
+    entrypoint: doctor/desk.py:parser
+  - id: desk.model
+    entrypoint: doctor/desk.py:model

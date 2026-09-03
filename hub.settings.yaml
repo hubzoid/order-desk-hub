@@ -1,0 +1,11 @@
+version: 1
+values:
+  DESK_SOURCES: [upload, email, whatsapp]
+  DESK_INTAKE_ENABLED: true
+  DESK_POLICY_FILES: [knowledge/order-policy.md, knowledge/invoice-policy.md]
+  DESK_ALIASES_FILE: knowledge/sku-aliases.csv
+  DESK_MAX_FILE_BYTES: 20971520
+  DESK_MAX_PAGES: 100
+  DESK_MAX_LINES: 200
+  DESK_PARSE_TIMEOUT_SECONDS: 180
+secrets: {}

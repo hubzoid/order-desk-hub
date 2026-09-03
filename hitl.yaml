@@ -1,0 +1,9 @@
+version: 1
+questions: true
+approvers: requester
+tools:
+  # The chat approval card for a submission: a person approves every call, never the assistant.
+  desk_approve_submission: {ask: always}
+  desk_deny_submission: {ask: always}
+  # Saving an inert ERP draft asks once per chat.
+  desk_create_draft: {ask: once}

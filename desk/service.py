@@ -139,6 +139,32 @@ class Desk:
             return row["party_type"], row["party_id"], f"binding {kind} {row['source_ref']}"
         return None, None, None
 
+    def _received_at(self, payload: dict) -> str:
+        """When the message was sent or received: the email's Date header, the
+        WhatsApp timestamp, else when intake recorded it."""
+        if payload.get("received_at"):
+            return payload["received_at"]
+        if payload.get("intake_id"):
+            try:
+                from hubzoid.intake import service as intake
+
+                item = intake.get(self.hub_dir, payload["intake_id"])
+                data = (intake.envelope(self.hub_dir, item).get("provider_data") or {}) if item else {}
+                if data.get("date"):
+                    import email.utils
+
+                    dt = email.utils.parsedate_to_datetime(data["date"]).astimezone(timezone.utc)
+                    return dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+                if data.get("provider_timestamp"):
+                    dt = datetime.fromtimestamp(int(data["provider_timestamp"]), timezone.utc)
+                    return dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+                if item:
+                    dt = datetime.fromtimestamp(float(item["created"]), timezone.utc)
+                    return dt.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+            except Exception:  # noqa: BLE001 - the time of reading is the fallback
+                log.warning("desk: could not read the intake time of %s", payload.get("intake_id"))
+        return _now_iso()
+
     def open_case(self, payload: dict, *, work_item_id: str | None, preview: bool = False) -> tuple[dict, bool]:
         source, event = self._source_event(payload)
         cfg = self.erp.config()
@@ -147,9 +173,10 @@ class Desk:
         return self.store.create_case(
             hub_id=self.hub_id, source=source, source_event_id=event, intake_id=payload.get("intake_id"),
             triage_work_item_id=work_item_id, channel=payload.get("channel") or source,
-            sender_json={"external_id": sender.get("external_id"), "display_name": sender.get("display_name"),
+            sender_json={"external_id": sender.get("external_id"),
+                         "display_name": sender.get("display_name") or sender.get("display"),
                          "provider": payload.get("provider")},
-            received_at=payload.get("received_at") or _now_iso(), company=cfg.company, party_type=ptype,
+            received_at=self._received_at(payload), company=cfg.company, party_type=ptype,
             party_id=pid, party_bound_by=bound, preview=1 if preview else 0)
 
     def _attachment_bytes(self, att: dict) -> bytes:

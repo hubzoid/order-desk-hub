@@ -48,10 +48,10 @@ def intake(hub) -> dict:
         except StationOutputError as exc:
             output = hub.retry_station(exc.call_id, RETRY_CLARIFICATION)
     except StationError as exc:
-        code = "model_unavailable" if exc.code in ("station_failed", "station_timeout") else exc.code
         hub.work_item.checkpoint("extract_failed", lambda: desk._error(
-            desk.store.get_case(case_id), code, f"The extractor could not run ({exc.code}). Check the model login "
-            "(hubzoid stations doctor), then restart this work item from stage extract.") or True)
+            desk.store.get_case(case_id), "extraction_failed", f"The extractor station did not finish ({exc.code}). "
+            "Check the model login with `hubzoid stations doctor .`, then restart this work item "
+            "(hubzoid work-items restart . ITEM --reason ...).") or True)
         raise
     return hub.work_item.checkpoint("match", lambda: desk.stage_match(
         case_id, output, elements=parsed["elements"], parse_problems=parsed.get("problems")))

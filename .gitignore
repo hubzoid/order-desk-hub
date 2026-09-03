@@ -13,3 +13,5 @@ raw_data/
 restricted/.env
 *.sqlite
 *.sqlite-journal
+order_invoice_desk_hub.egg-info/
+.docling-install.log
