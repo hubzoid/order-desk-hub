@@ -96,6 +96,14 @@ class Desk:
         if actor.startswith("cli:"):
             return True       # the operator at this machine, with the server's authority
         try:
+            from hubzoid.access.session import LOCAL_OWNER
+            from hubzoid.workflows.identity import local_quickstart
+
+            if actor == LOCAL_OWNER and local_quickstart(self.hub_dir):
+                return True   # local owner mode: the one local account owns the hub
+        except Exception:  # noqa: BLE001
+            pass
+        try:
             from hubzoid.access import store_for
 
             gs = store_for(self.hub_dir)

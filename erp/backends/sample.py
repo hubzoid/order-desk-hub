@@ -109,10 +109,25 @@ class SampleTransport:
 
     # -- writes ---------------------------------------------------------------------------------
     def _fault(self, op: str) -> str | None:
+        """Test hook: an injected fault for the next `op`. In-process from
+        `self.faults`, or across processes from `<state>/sample-faults.json`
+        (a list of [op, fault], consumed in order). Sample backend only."""
         for i, (name, fault) in enumerate(self.faults):
             if name == op:
                 self.faults.pop(i)
                 return fault
+        path = self.state_dir / "sample-faults.json"
+        if path.is_file():
+            with _LOCK:
+                try:
+                    queued = json.loads(path.read_text())
+                except ValueError:
+                    queued = []
+                for i, (name, fault) in enumerate(queued):
+                    if name == op:
+                        queued.pop(i)
+                        path.write_text(json.dumps(queued))
+                        return fault
         return None
 
     def _validate(self, doctype: str, doc: dict) -> None:
@@ -219,6 +234,10 @@ class SampleTransport:
                 raise
         if fault == "commit_then_lose":
             raise WriteUncertain()
+        if fault == "commit_then_crash":
+            import os
+
+            os._exit(9)          # the process dies after the ERP saved the draft, before anyone hears
         return json.loads(json.dumps(doc, default=str), parse_float=Decimal)
 
     def submit(self, doc):
@@ -261,6 +280,10 @@ class SampleTransport:
                 raise
         if fault == "commit_then_lose":
             raise WriteUncertain()
+        if fault == "commit_then_crash":
+            import os
+
+            os._exit(9)
         return json.loads(json.dumps(new, default=str), parse_float=Decimal)
 
     def edit_draft(self, doctype: str, name: str, changes: dict) -> dict:

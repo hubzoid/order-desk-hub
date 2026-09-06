@@ -115,8 +115,15 @@ def case(hub) -> dict:
                 case_row["id"], "draft_ready", actor="desk", event="draft.refused", error_code="draft_not_saved",
                 error_message=str(exc)[:500])["revision"])
             raise
+        if not (view or {}).get("name"):
+            # A person resolved an uncertain create as done: the ERP itself says which draft it was.
+            found = writer.find(kind, ref)
+            if len(found) != 1:
+                raise DeskError("reconcile_needed", f"The ERP shows {len(found)} drafts for this operation. "
+                                "Reconcile the case before going on.", status=409)
+            view = found[0]
         return item.checkpoint("record", lambda: desk._summary(desk.record_draft(
-            case_row["id"], work_item_id=item.id, operation_id=None, view=view, actor=requester)))
+            case_row["id"], work_item_id=item.id, operation_id=None, view=_jsonable(view), actor=requester)))
 
     # -- submit --------------------------------------------------------------------------------------
     ctx = item.checkpoint("check", lambda: _jsonable(desk.begin(
@@ -170,8 +177,14 @@ def case(hub) -> dict:
             case_row["id"], "erp_draft_saved", actor="desk", event="submission.refused",
             error_code="not_submitted", error_message=f"Not submitted: {exc}"[:500])["revision"])
         raise
+    if not (result or {}).get("name"):
+        # Resolved as done by the requester after an uncertain submit: read what the ERP holds.
+        result = writer.get(kind, data["erp_name"])
+        if result["docstatus"] != 1:
+            raise DeskError("reconcile_needed", f"{data['erp_name']} is not submitted in the ERP. Reconcile again.",
+                            status=409)
     return item.checkpoint("record", lambda: desk._summary(desk.record_submitted(
-        case_row["id"], work_item_id=item.id, operation_id=None, view=result, actor=requester)))
+        case_row["id"], work_item_id=item.id, operation_id=None, view=_jsonable(result), actor=requester)))
 
 
 def _jsonable(value):

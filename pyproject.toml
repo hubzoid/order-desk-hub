@@ -41,5 +41,6 @@ markers = [
   "erp_live: needs the disposable ERPNext test site (docker compose project hubzoid-erpnext-test)",
   "docling: needs the parsing extra and its model assets (heavy)",
   "real_model: needs the installed Claude Code login (claude-local)",
+  "engine: runs the real Hubzoid workflow engine in a child process (slow)",
 ]
-addopts = "-m 'not erp_live and not docling and not real_model'"
+addopts = "-m 'not erp_live and not docling and not real_model and not engine'"
