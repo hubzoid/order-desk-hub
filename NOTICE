@@ -1,0 +1,17 @@
+Order & Invoice Desk, a ready-made Hubzoid hub
+Copyright 2026 Hubzoid
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This hub depends on, and does not include the source of:
+- Hubzoid (Apache-2.0)
+- Docling (MIT), with its own model assets and their licences
+- httpx (BSD-3-Clause), Pydantic (MIT), PyYAML (MIT), openpyxl (MIT)
+
+ERPNext and Frappe are separate GPL-3.0 and MIT applications that this hub talks to over their REST API.
+No ERPNext or Frappe code is copied into this repository.
+
+testing/erpnext/compose.yaml is adapted from frappe_docker's pwd.yml (MIT, Frappe Technologies).
+
+The distributor-v1 dataset is original synthetic data, Apache-2.0. Every name in it is fictional
+and labelled "Synthetic". Email domains are reserved .example domains.

@@ -18,6 +18,7 @@
     private_network_cidrs: []
     qualified_apps: []           # extra Frappe apps an administrator has checked for draft-save effects
     print_format: null           # the Sales Invoice print format for invoice copies (server setting)
+    local_test_site: false       # frappe_rest only: allow http://127.0.0.1:PORT for a disposable local test site
 
 Unknown keys fail. Company, currency, price lists and warehouses are explicit
 identifiers, never inferred from an incoming message. A file edit becomes
@@ -71,6 +72,7 @@ class ERPConfig(BaseModel):
     private_network_cidrs: list[str] = Field(default_factory=list, max_length=20)
     qualified_apps: list[str] = Field(default_factory=list, max_length=20)
     print_format: str | None = Field(default=None, max_length=140)
+    local_test_site: bool = False
 
     @field_validator("credential_ref", "submit_credential_ref")
     @classmethod
@@ -101,6 +103,8 @@ class ERPConfig(BaseModel):
 
     @model_validator(mode="after")
     def _backend(self):
+        if self.local_test_site and self.backend != "frappe_rest":
+            raise ValueError("local_test_site is only for backend frappe_rest")
         if self.backend in ("sample", "fake_rest"):
             if self.dataset not in DATASETS:
                 raise ValueError(f"backend {self.backend} needs dataset: one of {', '.join(DATASETS)}")
@@ -121,11 +125,16 @@ class ERPConfig(BaseModel):
         if self.backend == "fake_rest":
             if parts.scheme != "http" or host not in _LOOPBACK or not parts.port:
                 raise ValueError("fake_rest runs on this machine: site_url is http://127.0.0.1:<port>")
+        elif self.local_test_site:
+            if parts.scheme != "http" or host not in _LOOPBACK or not parts.port:
+                raise ValueError("local_test_site is a disposable ERPNext on this machine: site_url is "
+                                 "http://127.0.0.1:<port>")
         else:
             if parts.scheme != "https":
                 raise ValueError("a live ERPNext site_url must use https")
             if host in _LOOPBACK:
-                raise ValueError("a live site cannot be on loopback. Use fake_rest for a local test server")
+                raise ValueError("a live site cannot be on loopback. Use fake_rest for a local test server, or "
+                                 "local_test_site: true for a disposable ERPNext test container")
             if not self.credential_ref:
                 raise ValueError("backend frappe_rest needs credential_ref (the integration user's API key)")
         return self
@@ -136,7 +145,7 @@ class ERPConfig(BaseModel):
 
     @property
     def synthetic(self) -> bool:
-        return self.backend in ("sample", "fake_rest")
+        return self.backend in ("sample", "fake_rest") or self.local_test_site
 
     def site_fingerprint(self) -> str:
         """Stable identity of the ERP site and company: changes when either does."""
@@ -154,7 +163,7 @@ SAMPLE_DEFAULT = {
     "company": "Synthetic Meridian Distribution", "currency": "USD", "warehouses": ["SYN-MAIN - SMD"],
     "selling_price_list": "SYN-RETAIL", "buying_price_list": "SYN-BUYING", "writes_enabled": False,
     "timeout_seconds": 20, "read_attempts": 3, "page_size": 50, "private_network_cidrs": [],
-    "qualified_apps": [], "print_format": None,
+    "qualified_apps": [], "print_format": None, "local_test_site": False,
 }
 
 

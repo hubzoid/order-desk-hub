@@ -1,0 +1,105 @@
+# The disposable ERPNext test site for live qualification of the desks' ERP module.
+#
+#   docker compose -p hubzoid-erpnext-test -f testing/erpnext/compose.yaml up -d --wait
+#   docker compose -p hubzoid-erpnext-test -f testing/erpnext/compose.yaml down -v
+#
+# A synthetic company only, on http://127.0.0.1:8080, never a production site. Official Frappe images,
+# pinned. Adapted from frappe_docker's pwd.yml (MIT). NOT YET RUN: this Mac has no container runtime,
+# so live qualification is on the later list (founder decision, 20 Oct 2026). The tags below name the
+# releases current on 2026-10-15 and must be confirmed (and recorded with their digests) on the first run.
+x-erpnext: &erpnext
+  image: frappe/erpnext:${ERPNEXT_VERSION:-v16.51.1}
+  platform: linux/amd64
+  restart: "no"
+  volumes:
+    - sites:/home/frappe/frappe-bench/sites
+    - logs:/home/frappe/frappe-bench/logs
+
+services:
+  db:
+    image: mariadb:11.8
+    command: [--character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --skip-character-set-client-handshake]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ERPNEXT_DB_ROOT_PASSWORD:-synthetic-test-only}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 30
+    volumes: [db:/var/lib/mysql]
+    mem_limit: 768m
+
+  redis-cache:
+    image: redis:7.4-alpine
+    mem_limit: 128m
+  redis-queue:
+    image: redis:7.4-alpine
+    mem_limit: 128m
+
+  configurator:
+    <<: *erpnext
+    entrypoint: [bash, -c]
+    command:
+      - >
+        ls -1 apps > sites/apps.txt;
+        bench set-config -g db_host db; bench set-config -gp db_port 3306;
+        bench set-config -g redis_cache redis://redis-cache:6379;
+        bench set-config -g redis_queue redis://redis-queue:6379;
+        bench set-config -g redis_socketio redis://redis-queue:6379;
+        bench set-config -gp socketio_port 9000;
+    depends_on:
+      db: {condition: service_healthy}
+
+  create-site:
+    <<: *erpnext
+    entrypoint: [bash, -c]
+    command:
+      - >
+        wait-for-it -t 120 db:3306; wait-for-it -t 120 redis-cache:6379; wait-for-it -t 120 redis-queue:6379;
+        bench new-site --no-mariadb-socket --mariadb-root-password $${MYSQL_ROOT_PASSWORD} --admin-password
+        $${ADMIN_PASSWORD} --install-app erpnext --set-default hubzoid-test.localhost || true;
+        bench --site hubzoid-test.localhost set-config time_zone UTC;
+    environment:
+      MYSQL_ROOT_PASSWORD: ${ERPNEXT_DB_ROOT_PASSWORD:-synthetic-test-only}
+      ADMIN_PASSWORD: ${ERPNEXT_ADMIN_PASSWORD:?set ERPNEXT_ADMIN_PASSWORD in the shell, never in a file}
+    depends_on:
+      configurator: {condition: service_completed_successfully}
+
+  backend:
+    <<: *erpnext
+    mem_limit: 1g
+    depends_on:
+      create-site: {condition: service_completed_successfully}
+
+  websocket:
+    <<: *erpnext
+    command: [node, /home/frappe/frappe-bench/apps/frappe/socketio.js]
+    mem_limit: 128m
+    depends_on:
+      create-site: {condition: service_completed_successfully}
+
+  queue:
+    <<: *erpnext
+    command: [bench, worker, --queue, "long,default,short"]
+    mem_limit: 512m
+    depends_on:
+      create-site: {condition: service_completed_successfully}
+
+  frontend:
+    <<: *erpnext
+    command: [nginx-entrypoint.sh]
+    environment:
+      BACKEND: backend:8000
+      SOCKETIO: websocket:9000
+      FRAPPE_SITE_NAME_HEADER: hubzoid-test.localhost
+      UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on: [backend, websocket]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/method/ping || exit 1"]
+      interval: 10s
+      retries: 60
+
+volumes:
+  db:
+  sites:
+  logs:

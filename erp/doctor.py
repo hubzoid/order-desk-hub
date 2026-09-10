@@ -31,8 +31,9 @@ HOOKS = (
     ("Auto Repeat", [["disabled", "=", 0]], "reference_doctype"),
 )
 WRITE_DOCTYPES = ["Sales Order", "Purchase Invoice"]
-#: Frappe and ERPNext major versions this connector is qualified against.
-QUALIFIED = {"frappe": ("15",), "erpnext": ("15",)}
+#: Frappe and ERPNext major versions this connector has passed the live contract suite on. Empty until the
+#: first live qualification run (tests/live/), which adds the versions it ran against.
+QUALIFIED: dict[str, tuple[str, ...]] = {"frappe": (), "erpnext": ()}
 
 
 def _check(cid, status, summary, recovery=None, **details):
@@ -59,7 +60,8 @@ def run(service, *, probe_resources: bool = True) -> dict:
                          revision=applied.revision, digest=applied.digest))
     label = {"sample": "SYNTHETIC DATA. Sample backend: no network, no live ERP.",
              "fake_rest": "SYNTHETIC DATA. Fake REST test server on loopback, not a real ERP.",
-             "frappe_rest": f"Live ERPNext site {cfg.origin}."}[cfg.backend]
+             "frappe_rest": (f"LOCAL TEST SITE {cfg.origin}: a disposable ERPNext with synthetic data, never "
+                             "production." if cfg.local_test_site else f"Live ERPNext site {cfg.origin}.")}[cfg.backend]
     checks.append(_check("backend", "info", label, backend=cfg.backend, synthetic=cfg.synthetic))
     ready_read = True
     try:
@@ -79,8 +81,9 @@ def run(service, *, probe_resources: bool = True) -> dict:
             extra = sorted(set(versions) - {"frappe", "erpnext"} - set(cfg.qualified_apps))
             checks.append(_check("versions", "warn" if bad else "ok",
                                  f"Versions: {', '.join(f'{a} {v}' for a, v in sorted(versions.items()))}."
-                                 + (f" Not qualified: {', '.join(bad)}." if bad else ""),
-                                 "Use a qualified Frappe and ERPNext major (see docs/erpnext-setup.md)" if bad else None,
+                                 + (f" Not yet live-qualified: {', '.join(bad)}." if bad else ""),
+                                 "Run the live contract suite against a test copy of this site before enabling "
+                                 "writes (testing/erpnext/README.md)" if bad else None,
                                  versions=versions, unqualified_apps=extra))
         else:
             extra = []

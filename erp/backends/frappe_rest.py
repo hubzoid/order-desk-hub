@@ -23,7 +23,8 @@ class FrappeTransport:
         self.name = cfg.backend
         kwargs = {"sleep": sleep} if sleep is not None else {}
         self.http = FrappeHTTP(cfg.origin, credential=credential, timeout=cfg.timeout_seconds,
-                               read_attempts=cfg.read_attempts, loopback_only=cfg.backend == "fake_rest",
+                               read_attempts=cfg.read_attempts,
+                               loopback_only=cfg.backend == "fake_rest" or cfg.local_test_site,
                                private_cidrs=cfg.private_network_cidrs, resolver=resolver, verify=verify,
                                **kwargs)
 

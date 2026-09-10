@@ -228,8 +228,11 @@ def match_unit(ctx: Context, item: dict, line, n: int, qty: Decimal, src) -> tup
             return {"uom": uom, "qty": qty, "conversion_factor": factors[uom], "source_qty": qty, "source_unit": word,
                     "rule": {"id": "unit_word", "text": f"{word} is the ERP unit {uom} (1 {uom} = "
                              f"{dstr(factors[uom])} {stock} in the item master)", "cite": cite}}, []
+    forms = _singular(word)
+    one = forms[1] if len(forms) > 1 else forms[0]
     return None, [Question("unit_unknown", f"Line {n}: the unit \"{word}\" is not a unit of {item['code']} and no rule "
-                           f"converts it. How many {stock} is one {word}?", f"lines[{n}].uom", n,
+                           f"converts it. How many {stock} are in one {one}? Answer for this case, or add a unit "
+                           "alias row to knowledge/sku-aliases.csv for every future order.", f"lines[{n}].uom", n,
                            options=[{"value": u, "label": u} for u in factors], answer_type="choice", source=src,
                            rule=f"{ORDER_POLICY}#O5")]
 

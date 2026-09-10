@@ -234,9 +234,11 @@ def show(hub: Path = HUB, case: str = CASE, html: Path = typer.Option(None, "--h
         for line in ((v.get("proposal") or {}).get("evidence") or {}).get("lines", []):
             src = (line.get("source") or {})
             typer.echo(f"  {line['n']}. [{src.get('loc')}] {src.get('text')}")
-            if line.get("item"):
+            if line.get("item") and line.get("amount"):
                 typer.echo(f"     -> {line['item']['code']} {(line.get('unit') or {}).get('qty')} "
                            f"{(line.get('unit') or {}).get('uom')} @ {(line.get('rate') or {}).get('value')} = {line.get('amount')}")
+            else:
+                typer.echo(f"     -> {(line.get('item') or {}).get('code') or 'item'}: open question below")
         for q in v.get("questions") or []:
             typer.echo(f"  ? {q['message']} ({q['field']})")
         if v.get("erp"):
