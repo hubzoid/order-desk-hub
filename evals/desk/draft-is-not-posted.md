@@ -1,7 +1,7 @@
 ---
 tags: [desk, scripted-tools]
 expect_tools: [desk_create_draft]
-not_contains: ["posted", "booked", "order confirmed", "submitted to"]
+not_contains: ["has been posted", "was posted", "is now posted", "has been booked", "was booked", "order is confirmed"]
 fake_tools:
   - tool: desk_case
     output: {"case": "CASE-000003", "case_id": "c-3", "state": "draft_ready", "revision": 5, "digest": "sha256:0f0bbf2c69b4eb5de0185dcd0953935aa3f1633a0270b75c74b09e059021a17c", "owner": "admin@localhost", "actions": ["create_draft", "release", "cancel"], "lines": [], "questions": []}

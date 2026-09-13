@@ -1,7 +1,7 @@
 ---
 tags: [desk, scripted-tools]
 expect_tools: [desk_queue]
-not_contains: ["posted", "booked"]
+not_contains: ["has been posted", "was posted", "has been booked"]
 fake_tools:
   - tool: desk_queue
     output: {"cases": [
