@@ -20,7 +20,6 @@ from . import config as config_lib
 from .backends import build
 from .errors import ERPError
 from .read import ERPReader
-from .write import DraftWriter
 
 DATASETS_ROOT = Path(__file__).resolve().parent / "datasets"
 
@@ -96,7 +95,11 @@ class ERPService:
     def reader(self, transport=None) -> ERPReader:
         return ERPReader(self.config(), transport or self.transport(), cursor_key=self._cursor_key())
 
-    def writer(self, transport=None) -> DraftWriter:
+    def writer(self, transport=None):
+        """The write contract. Imported here, so a read-only copy of this module
+        (the Customer Desk's) imports this file without write.py."""
+        from .write import DraftWriter
+
         cfg = self.config()
         rt = transport or self.transport()
         submit_factory = (lambda: self.transport(submit=True)) if cfg.backend == "frappe_rest" else None

@@ -277,6 +277,9 @@ class Desk:
         """Check the extraction against its sources, match and validate, then
         record proposal revision N and the case's new state."""
         case = self.store.get_case(case_id)
+        if reason == "triage" and case.get("proposal_revision"):
+            # A replay of the same triage after a crash between the write and its saved stage.
+            return self._summary(case)
         try:
             ex = extract_lib.parse_output(extraction if extraction is not None else station_output)
         except ValueError as exc:
@@ -648,7 +651,7 @@ class Desk:
                                                actor=None if actor.startswith("cli:") else actor)
         except WorkItemError as exc:
             raise DeskError(exc.code, exc.message, status=exc.status, **exc.fields) from None
-        self.store.link(case["id"], work_item_id=item["id"], action=route,
+        self.store.link(case["id"], work_item_id=item["id"], action=route, insert_only=True,
                         proposal_revision=case.get("proposal_revision"), state="requested")
         self.store.event(case["id"], f"{route}.requested", actor, {"work_item_id": item["id"]})
         return {"case_id": case["id"], "number": case_number(case), "work_item_id": item["id"],

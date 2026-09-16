@@ -297,11 +297,17 @@ class Store:
         return [self.proposal(case_id, r) for r in revs]
 
     # -- ERP links ------------------------------------------------------------------------------------
-    def link(self, case_id: str, *, work_item_id: str, action: str, **fields) -> dict:
+    def link(self, case_id: str, *, work_item_id: str, action: str, insert_only: bool = False, **fields) -> dict:
+        """Record or update the link from a case to one of its work items.
+        `insert_only`: the caller that admitted the work item records it only if
+        the work item has not already recorded its own outcome (a fast worker
+        can finish before the admitting call returns)."""
         with self.tx() as c:
             row = c.execute("SELECT * FROM desk_erp_links WHERE case_id=? AND work_item_id=?",
                             (case_id, work_item_id)).fetchone()
             t = now()
+            if row is not None and insert_only:
+                return dict(row)
             if row is None:
                 data = {"id": new_id(), "case_id": case_id, "work_item_id": work_item_id, "action": action,
                         "state": fields.pop("state", "requested"), "created_at": t, "updated_at": t, **fields}

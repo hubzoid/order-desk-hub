@@ -22,7 +22,10 @@ only, and never imports a model runtime.
 | `purchase_invoices` | Purchase Invoice | Rows keep `po_detail` and `pr_detail`. |
 
 Every record is `{resource, id, company, modified_at, erp_modified, observed_at,
-backend, synthetic, fields, rows, source}`. Money and quantities are Decimal
+backend, synthetic, fields, rows, source}`. `rows` is a plain list of the record's
+child rows (the `items` table of a transaction, the `uoms` table of an item), each
+`{row_id, idx, ...allowlisted row fields}`. It is `null` in list results: read the
+record for its rows. Money and quantities are Decimal
 strings. `ERPContext.party_scope` (set by trusted desk code from a verified
 case binding, never by a model) hides every record of another party as
 `not_found`. `get_print_pdf` returns the official print of a submitted Sales
