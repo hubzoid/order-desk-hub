@@ -27,6 +27,24 @@ from ..resources import WRITE_KINDS
 USER = "sample-integration@synthetic-meridian.example"
 _LOCK = threading.Lock()
 _SERIES = {"Sales Order": "SAL-ORD-2000-", "Purchase Invoice": "ACC-PINV-2000-"}
+#: The fields a saved document keeps. Like Frappe, an insert silently drops
+#: any other key (a misspelt field is lost, never an error), and a row keeps
+#: only its own fields.
+_HEADER_KEEP = {
+    "Sales Order": {"company", "customer", "po_no", "transaction_date", "delivery_date", "currency",
+                    "selling_price_list", "set_warehouse", "doctype", "docstatus", "custom_hubzoid_operation_id",
+                    "items"},
+    "Purchase Invoice": {"company", "supplier", "bill_no", "bill_date", "posting_date", "due_date", "currency",
+                         "buying_price_list", "set_warehouse", "update_stock", "doctype", "docstatus",
+                         "custom_hubzoid_operation_id", "items"},
+}
+_ROW_KEEP = {
+    "Sales Order": {"item_code", "item_name", "description", "qty", "uom", "conversion_factor", "stock_qty", "rate",
+                    "price_list_rate", "amount", "delivery_date", "warehouse"},
+    "Purchase Invoice": {"item_code", "item_name", "description", "qty", "uom", "conversion_factor", "stock_qty",
+                         "rate", "price_list_rate", "amount", "purchase_order", "po_detail", "purchase_receipt",
+                         "pr_detail", "warehouse"},
+}
 _STATUS_FIELDS = ("docstatus", "status", "per_delivered", "per_billed", "per_received", "delivery_status",
                   "billing_status", "outstanding_amount")
 
@@ -195,8 +213,12 @@ class SampleTransport:
         if doctype not in WRITE_KINDS.values():
             raise NotDispatched("write_not_allowed", f"{doctype} is not a document this desk may create.", status=403)
         doc = copy.deepcopy(doc)
-        if int(doc.get("docstatus") or 0) != 0:
-            raise Refused("erp_validation_failed", "A new document must be a draft.", status=422)
+        # Frappe: unknown keys vanish without an error, and docstatus 1 on an
+        # insert saves and submits in one call. The writer must cope with both.
+        submit_now = int(doc.get("docstatus") or 0) == 1
+        doc = {k: v for k, v in doc.items() if k in _HEADER_KEEP[doctype]}
+        doc["items"] = [{k: v for k, v in (r or {}).items() if k in _ROW_KEEP[doctype]}
+                        for r in doc.get("items") or []]
         fault = self._fault("insert")
         if fault == "unreachable":
             raise NotDispatched("erp_unavailable", "Could not connect to the ERP. Nothing was sent.", status=503)
@@ -216,8 +238,9 @@ class SampleTransport:
                 number = max([int(n[len(prefix):]) for n in existing if n[len(prefix):].isdigit()] + [0]) + 1
                 doc["name"] = f"{prefix}{number:05d}"
                 doc["doctype"] = doctype
-                doc["docstatus"] = 0
-                doc["status"] = "Draft"
+                doc["docstatus"] = 1 if submit_now else 0
+                doc["status"] = ("To Deliver and Bill" if doctype == "Sales Order" else "Unpaid") if submit_now \
+                    else "Draft"
                 doc["owner"] = USER
                 doc["creation"] = doc["modified"] = _now()
                 for f in ("per_delivered", "per_billed"):

@@ -66,9 +66,10 @@ RESOURCES: dict[str, Resource] = {r.name: r for r in (
              party_field="supplier", party_kind="supplier", company_field="company",
              filters=("supplier", "docstatus", "status"), date_field="transaction_date"),
     Resource("purchase_receipts", "Purchase Receipt",
-             ("supplier", "company", "posting_date", "docstatus", "status", "currency", *_TOTALS),
+             ("supplier", "company", "posting_date", "docstatus", "status", "currency", "is_return",
+              "return_against", *_TOTALS),
              child_table="items",
-             child_fields=("item_code", "item_name", "qty", "received_qty", "rejected_qty", "uom",
+             child_fields=("item_code", "item_name", "qty", "received_qty", "rejected_qty", "returned_qty", "uom",
                            "conversion_factor", "stock_qty", "rate", "amount", "purchase_order",
                            "purchase_order_item", "warehouse"),
              party_field="supplier", party_kind="supplier", company_field="company",
@@ -83,7 +84,8 @@ RESOURCES: dict[str, Resource] = {r.name: r for r in (
              filters=("customer", "docstatus", "status", "po_no", "is_return"), date_field="posting_date"),
     Resource("purchase_invoices", "Purchase Invoice",
              ("supplier", "company", "bill_no", "bill_date", "posting_date", "due_date", "docstatus", "status",
-              "currency", "outstanding_amount", *_TOTALS, "buying_price_list", "custom_hubzoid_operation_id"),
+              "currency", "outstanding_amount", "is_return", *_TOTALS, "buying_price_list",
+              "custom_hubzoid_operation_id"),
              child_table="items",
              child_fields=("item_code", "item_name", "qty", "uom", "conversion_factor", "stock_qty", "rate",
                            "amount", "purchase_order", "po_detail", "purchase_receipt", "pr_detail",
@@ -97,7 +99,7 @@ BY_DOCTYPE = {r.doctype: r for r in RESOURCES.values()}
 
 #: Money and quantity fields: always Decimal strings in results, never floats.
 DECIMAL_FIELDS = frozenset({
-    "qty", "delivered_qty", "received_qty", "rejected_qty", "stock_qty", "conversion_factor", "rate", "amount",
+    "qty", "delivered_qty", "received_qty", "rejected_qty", "returned_qty", "stock_qty", "conversion_factor", "rate", "amount",
     "price_list_rate", "actual_qty", "reserved_qty", "projected_qty", "outstanding_amount", "per_delivered",
     "per_billed", "per_received", *_TOTALS,
 })

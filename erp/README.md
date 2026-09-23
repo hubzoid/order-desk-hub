@@ -17,7 +17,7 @@ only, and never imports a model runtime.
 | `prices` | Item Price | Customer and supplier prices hidden from other parties. |
 | `availability` | Bin | Only the configured warehouses. |
 | `sales_orders` | Sales Order | Delivery and billing status, `per_delivered`, `per_billed`, item rows with `delivered_qty` and `delivery_date`. |
-| `purchase_orders`, `purchase_receipts` | Purchase Order, Purchase Receipt | Receipt rows keep `purchase_order` and `purchase_order_item`. |
+| `purchase_orders`, `purchase_receipts` | Purchase Order, Purchase Receipt | Receipt rows keep `purchase_order` and `purchase_order_item`, accepted `qty`, `stock_qty`, `rejected_qty` and `returned_qty` (stock units). Receipts carry `is_return`. |
 | `sales_invoices` | Sales Invoice | With `po_no`, `is_return`, `outstanding_amount`. |
 | `purchase_invoices` | Purchase Invoice | Rows keep `po_detail` and `pr_detail`. |
 
@@ -40,8 +40,16 @@ Invoice only, with the format from `print_format` in the configuration, a
   must match the configuration. The external reference becomes a unique
   marker in `custom_hubzoid_operation_id`, so one operation never creates two
   documents, and the business reference (PO number, bill number) is searched
-  first. The draft is read back and compared: any difference is
-  `needs_review`.
+  first, on every page of that party's documents. On a live site nothing is
+  inserted until the marker field is proven unique (`require_unique_marker`).
+  The draft is read back and compared, the unit conversion included (a
+  payload line may carry `expected_conversion_factor`, kept by the desk and
+  never sent): any difference is `needs_review`.
+* `recover(kind, payload, external_ref)`: after a lost or interrupted create,
+  what ERPNext holds for the marker, checked like a fresh create: `absent`,
+  `applied` (one inert draft equal to the proposal), `different`,
+  `not_inert` or `several`. Only `absent` with a proven unique marker makes a
+  retry safe.
 * `get(kind, name)`: the reread draft with its `content_digest` and
   `approval_digest` (content plus name, `modified` version and docstatus).
 * `submit_approved(kind, name, approved_digest)`: rereads, refuses unless the
@@ -56,7 +64,8 @@ mode and turns a lost answer into an `ambiguous` operation that is reconciled
 with `find(kind, external_ref)`, never retried blindly.
 
 **Backends**: `sample` (no network, the `distributor-v1` dataset plus a local
-state file), `fake_rest` (the real REST client against `fake_server.py` on
+state file; like Frappe, an insert drops unknown fields without an error and
+an insert with docstatus 1 submits), `fake_rest` (the real REST client against `fake_server.py` on
 loopback, with fault injection) and `frappe_rest` (a live site). One test suite
 runs the same contract on all three (`tests/test_erp_contract.py`, and
 `tests/live/` for the live site).

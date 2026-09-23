@@ -17,8 +17,13 @@ Safety rules, the same on every backend:
   second document, even after a lost answer), and the business reference (the
   customer's PO number, the supplier's bill number) is searched first.
 * After every create the document is read back and compared with the
-  proposal: any difference in lines, currency or totals is `needs_review`,
-  never silently accepted, rounded or repaired.
+  proposal: any difference in lines, unit conversion, currency or totals is
+  `needs_review`, never silently accepted, rounded or repaired. A document
+  found again by its marker (a deduplicated create, or reconciliation after a
+  lost answer) goes through the same checks (`recover`).
+* On a live site the marker field must be unique before anything is inserted:
+  a lost answer is retried only because ERPNext itself refuses a second
+  document with the same marker.
 * Submit rereads the draft, recomputes its approval digest (content, name,
   `modified` version, docstatus) and refuses unless it equals the approved
   digest. The submit sends that exact document, so Frappe's own `modified`
@@ -70,11 +75,19 @@ class _Line(BaseModel):
     rate: str
     warehouse: str | None = None
     source_ref: str | None = Field(default=None, max_length=500)   # kept by the desk, not sent to the ERP
+    #: The unit conversion the proposal used (stock units per `uom`). Never
+    #: sent: ERPNext sets its own from the item, and the reread must match it.
+    expected_conversion_factor: str | None = None
 
     @field_validator("qty", mode="before")
     @classmethod
     def _qty(cls, v):
         return _decimal(v, positive=True, field="qty")
+
+    @field_validator("expected_conversion_factor", mode="before")
+    @classmethod
+    def _factor(cls, v):
+        return None if v is None else _decimal(v, positive=True, field="expected_conversion_factor")
 
     @field_validator("rate", mode="before")
     @classmethod
@@ -203,6 +216,7 @@ class DraftWriter:
         data = model.model_dump(mode="json", exclude_none=True)
         for row in data["items"]:
             row.pop("source_ref", None)
+            row.pop("expected_conversion_factor", None)
             if kind == "sales_order":
                 row.setdefault("delivery_date", data["delivery_date"])
                 row.setdefault("warehouse", data["set_warehouse"])
@@ -224,7 +238,9 @@ class DraftWriter:
         data = model.model_dump(mode="json", exclude_none=True)
         lines = []
         for i, row in enumerate(data["items"], 1):
-            line = {"idx": i, **{k: v for k, v in row.items() if k != "source_ref"}}
+            line = {"idx": i, **{k: v for k, v in row.items() if k not in ("source_ref", "expected_conversion_factor")}}
+            if row.get("expected_conversion_factor") is not None:
+                line["conversion_factor"] = row["expected_conversion_factor"]
             if kind == "sales_order":
                 line.setdefault("delivery_date", data["delivery_date"])
                 line.setdefault("warehouse", data["set_warehouse"])
@@ -246,8 +262,6 @@ class DraftWriter:
             diffs.append({"field": "lines", "proposed": len(want["lines"]), "erp": len(got["lines"])})
         for i, (w, g) in enumerate(zip(want["lines"], got["lines"]), 1):
             for field, value in w.items():
-                if field == "conversion_factor":
-                    continue
                 if value is not None and g.get(field) != value:
                     diffs.append({"field": f"line {i}.{field}", "proposed": value, "erp": g.get(field)})
         for field in ("grand_total",):
@@ -278,6 +292,77 @@ class DraftWriter:
         slug = doc["doctype"].lower().replace(" ", "-")
         return f"{self.cfg.origin}/app/{slug}/{doc['name']}"
 
+    def require_unique_marker(self, kind: str) -> None:
+        """Raises unless the ERP itself refuses a second document with the same
+        marker: the condition for ever retrying a create whose answer was lost."""
+        self._require_unique_marker(_kind(kind))
+
+    def _require_unique_marker(self, doctype: str) -> None:
+        """A lost answer is retried only because the ERP refuses a second
+        document with the same marker. On a site, prove that before writing."""
+        if self.cfg.backend == "sample":
+            return                     # a unique index in the sample's own store
+        cache = self.__dict__.setdefault("_unique_checked", {})
+        if cache.get(doctype):
+            return
+        from .bootstrap import inspect
+
+        state = inspect(self.rt).get(doctype)
+        if state != "ok":
+            raise ERPError("erp_schema_unsupported", f"custom_hubzoid_operation_id is {state or 'missing'} on "
+                           f"{doctype}. It must exist and be unique before the desk writes, so a lost answer can "
+                           "never become two documents. An ERP administrator runs hubzoid-erp bootstrap.",
+                           status=409, state=state)
+        cache[doctype] = True
+
+    def _business_clash(self, doctype: str, party_field: str, ref_field: str, party: str, ref: str) -> list[dict]:
+        """Every live document of this party with the same business reference,
+        compared after normalising (case, width, spacing). Reads every page:
+        a clash after the first page must not be missed."""
+        page, start, out = 500, 0, []
+        while True:
+            rows = self.rt.list_docs(doctype, filters=[[party_field, "=", party], ["company", "=", self.cfg.company],
+                                                       ["docstatus", "!=", 2]],
+                                     fields=[ref_field, "docstatus"], start=start, limit=page)
+            out += [r for r in rows if dg.normalize_reference(r.get(ref_field)) == ref]
+            if len(rows) < page:
+                return out
+            start += page
+            if start >= 50000:
+                raise ERPError("erp_validation_failed", f"This {party_field} has more than 50,000 {doctype} "
+                               "documents, so the duplicate check cannot be completed. Nothing was written.",
+                               status=409)
+
+    def recover(self, kind: str, payload: dict, external_ref: str) -> dict:
+        """What the ERP holds for this operation after a lost or interrupted
+        create, checked exactly as a fresh create is: inert, carrying the
+        marker, and equal to the proposal.
+
+        Returns {"status": ..., "view": ..., "names": [...]} where status is
+        `absent` (no document carries the marker), `applied` (one inert draft
+        that matches, possibly with an ERP-computed total to review),
+        `different` (one document whose content differs), `not_inert` (one
+        document that is no longer a draft) or `several` (an incident)."""
+        doctype = _kind(kind)
+        model, _ = clean_payload(kind, payload)
+        expected = self._expected(kind, model)
+        found = [d for d in self._by_marker(doctype, self.marker(external_ref)) if d]
+        if not found:
+            return {"status": "absent", "view": None, "names": []}
+        if len(found) > 1:
+            return {"status": "several", "view": None, "names": [d["name"] for d in found]}
+        doc = found[0]
+        diffs = self._differences(expected, doc)
+        if int(doc.get("docstatus") or 0) != 0:
+            return {"status": "not_inert", "names": [doc["name"]],
+                    "view": self.view(kind, doc, deduplicated=True, needs_review=True, differences=diffs + [
+                        {"field": "docstatus", "proposed": 0, "erp": int(doc.get("docstatus") or 0)}])}
+        if any(d["field"] != "grand_total" for d in diffs):
+            return {"status": "different", "names": [doc["name"]],
+                    "view": self.view(kind, doc, deduplicated=True, needs_review=True, differences=diffs)}
+        return {"status": "applied", "names": [doc["name"]],
+                "view": self.view(kind, doc, deduplicated=True, needs_review=bool(diffs), differences=diffs)}
+
     # -- the contract ---------------------------------------------------------------------------
     def create_draft(self, kind: str, payload: dict, external_ref: str) -> dict:
         doctype = _kind(kind)
@@ -296,6 +381,10 @@ class DraftWriter:
                            names=[d["name"] for d in existing])
         if existing:
             doc = existing[0]
+            if int(doc.get("docstatus") or 0) != 0:
+                raise ERPError("draft_not_inert", f"{doctype} {doc['name']} for this operation is no longer a draft "
+                               f"(docstatus {doc.get('docstatus')}). Review it in the ERP.", status=409,
+                               name=doc["name"])
             diffs = self._differences(expected, doc)
             if any(d["field"] != "grand_total" for d in diffs):
                 raise ERPError("operation_conflict", "This operation already created a different document. "
@@ -305,16 +394,14 @@ class DraftWriter:
                              stripped=stripped)
         # 2. A document with the same business reference already exists.
         ref = dg.normalize_reference(getattr(model, ref_field))
-        rows = self.rt.list_docs(doctype, filters=[[party_field, "=", getattr(model, party_field)],
-                                                   ["company", "=", self.cfg.company], ["docstatus", "!=", 2]],
-                                 fields=[ref_field, "docstatus"], start=0, limit=500)
-        clash = [r for r in rows if dg.normalize_reference(r.get(ref_field)) == ref]
+        clash = self._business_clash(doctype, party_field, ref_field, getattr(model, party_field), ref)
         if clash:
             raise ERPError("duplicate_found", f"{doctype} {clash[0]['name']} already has {ref_field} "
                            f"{getattr(model, ref_field)} for this {party_field}. Review it instead of creating "
                            "another.", status=409, name=clash[0]["name"],
                            business_key=[self.cfg.company, getattr(model, party_field), ref])
-        # 3. Create, then read back.
+        # 3. Create, then read back. Only where the marker is proven unique.
+        self._require_unique_marker(doctype)
         doc = self._to_doc(kind, model, marker)
         try:
             created = self.wt.insert(doctype, doc)

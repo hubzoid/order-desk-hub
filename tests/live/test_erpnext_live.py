@@ -99,3 +99,22 @@ def test_draft_user_cannot_submit(tmp_path):
     with pytest.raises(ERPError) as err:          # the draft credential holds no submit right
         transport.submit(transport.get_doc("Sales Order", out["name"]))
     assert err.value.code in ("erp_permission_denied", "erp_validation_failed")
+
+
+def test_marker_is_unique_and_recovery_checks_the_draft(writer_service):
+    w = writer_service.writer()
+    w.require_unique_marker("sales_order")                 # the bootstrap made the field unique
+    w.require_unique_marker("purchase_invoice")
+    so = dict(SO, po_no="HF-LIVE-0003")
+    assert w.recover("sales_order", so, "live-op-3")["status"] == "absent"
+    made = w.create_draft("sales_order", so, "live-op-3")
+    found = w.recover("sales_order", so, "live-op-3")
+    assert found["status"] == "applied" and found["view"]["name"] == made["name"]
+
+
+def test_site_drops_unknown_fields_as_the_fake_does(writer_service):
+    t = writer_service.transport()
+    doc = {"doctype": "Sales Order", "docstatus": 0, **{k: v for k, v in SO.items() if k != "items"},
+           "po_no": "HF-LIVE-0004", "custom_hubzoid_operaton_id": "misspelt", "items": SO["items"]}
+    saved = t.get_doc("Sales Order", t.insert("Sales Order", doc)["name"])
+    assert "custom_hubzoid_operaton_id" not in saved and not saved.get("custom_hubzoid_operation_id")
