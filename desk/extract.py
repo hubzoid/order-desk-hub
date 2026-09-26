@@ -166,8 +166,10 @@ class Verified(BaseModel):
 
 
 def verify(extraction: Extraction, elements: list[dict]) -> Verified:
-    """Drop every value its cited element does not contain. Each drop is a
-    problem the desk turns into a question."""
+    """Drop every value its cited element does not contain, and replace a
+    line's `raw_text` that is not the element's own text with the element's
+    text. Each change is a problem the desk reports. A value that was dropped
+    is then missing, so the desk asks for it."""
     by_id = {e["id"]: e for e in elements}
     problems: list[dict] = []
     data = extraction.model_copy(deep=True)
@@ -218,6 +220,11 @@ def verify(extraction: Extraction, elements: list[dict]) -> Verified:
         text = norm_text(el["text"])
         nums = numbers_in(el["text"])
         bad = []
+        if norm_text(line.raw_text) not in text:
+            # The desk reads item codes from a line's source text, so it must be
+            # the element's own words. Use the element itself instead.
+            bad.append("raw_text")
+            line.raw_text = el["text"]
         for field in ("item_code_seen", "description_seen", "unit_seen", "purchase_order_seen"):
             value = getattr(line, field)
             if value and norm_text(value) not in text:

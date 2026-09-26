@@ -5,8 +5,9 @@ this hub's real workflows, against the sample ERP. The test drives it the way
 the CLI and the chat do: through the desk service and the SDK's work-item
 decisions. Covered: an inert draft, an approve-mode submit after the
 requester's approval of the exact draft, one submit for two decisions, a
-denial, a draft changed after approval, a crash right after the ERP saved the
-draft, and a lost answer reconciled by the requester.
+denial, asking again after a denial, a draft changed after approval, a crash
+right after the ERP saved the draft, a draft changed in the ERP before that
+crash was recovered, and a lost answer reconciled by the requester.
 """
 from __future__ import annotations
 
@@ -271,6 +272,62 @@ def test_lost_answer_waits_for_the_requester_then_settles(hub, tmp_path):
         assert wi_store.get_op(hub, entry["operation_id"])["state"] == "resolved_done"
     finally:
         engine.close()
+
+
+def test_denied_then_asked_again_is_a_new_approval(hub, tmp_path):
+    from hubzoid.work_items import service as wi
+
+    engine = Engine(hub, tmp_path)
+    try:
+        desk = _desk(hub)
+        _, case = _draft(desk, _ready_case(desk, "OID-001"))
+        first = desk.request_submit(OWNER, case["id"], expected_revision=case["revision"],
+                                    digest=case["approval_digest"], erp_version=case["erp_modified"])
+        op = _waiting_op(desk, first["work_item_id"])
+        wi.deny(hub, op["id"], OWNER, reason="checking the delivery date first", surface="test")
+        case = _wait(desk, case["id"], ("erp_draft_saved",))
+        _wait_item_done(hub, first["work_item_id"])
+        again = desk.request_submit(OWNER, case["id"], expected_revision=case["revision"],
+                                    digest=case["approval_digest"], erp_version=case["erp_modified"])
+        assert again["work_item_id"] != first["work_item_id"] and again["created"] is True
+        op2 = _waiting_op(desk, again["work_item_id"])
+        wi.approve(hub, op2["id"], OWNER, digest=op2["args_digest"], surface="test")
+        done = _wait(desk, case["id"], ("done", "error"))
+        assert done["state"] == "done" and done["erp_docstatus"] == 1
+    finally:
+        engine.close()
+
+
+def test_a_draft_changed_before_recovery_is_never_taken_as_done(hub, tmp_path):
+    engine = Engine(hub, tmp_path)
+    desk = _desk(hub)
+    case = _ready_case(desk, "OID-004")
+    (hub / ".hubzoid" / "data" / "erp" / "sample-faults.json").write_text(json.dumps([["insert", "commit_then_crash"]]))
+    prop = desk.store.proposal(case["id"])
+    desk.request_draft(OWNER, case["id"], expected_revision=case["revision"], digest=prop["digest"])
+    engine.wait_exit(90)                       # the ERP saved the draft, then the engine died
+    saved = desk.erp.writer().find("sales_order", desk.external_ref(case["id"], prop["revision"]))[0]
+    desk.erp.transport().edit_draft("Sales Order", saved["name"], {"delivery_date": "2000-01-31"})
+    engine = Engine(hub, tmp_path)             # recovery finds a draft that differs from the proposal
+    try:
+        settled = _wait(desk, case["id"], ("erp_draft_saved", "ambiguous", "error"), timeout=120)
+        assert settled["state"] == "ambiguous", settled
+        entry = next(o for o in desk.reconcile(OWNER, case["id"])["operations"] if o["state"] == "ambiguous")
+        assert entry["verdict"] == "one_document_differs" and entry["matches_proposal"] is False
+        assert any(d["field"] == "delivery_date" for d in entry["differences"])
+    finally:
+        engine.close()
+
+
+def _wait_item_done(hub, item_id, timeout=60):
+    from hubzoid.work_items import store as wi_store
+
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if wi_store.get_item(hub, item_id)["state"] in wi_store.TERMINAL:
+            return
+        time.sleep(0.5)
+    raise AssertionError("the work item did not finish")
 
 
 def test_write_modes_gate_the_actions(hub, tmp_path):

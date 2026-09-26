@@ -10,8 +10,12 @@ requester is that person.
 
 * route `draft`: `hub.operation.run` saves an inert draft through the ERP
   contract (`create_draft`). Allowed when `erp.submit` is `draft` or
-  `approve`. Recovery is `reconcile`: the operation's unique marker in the ERP
-  shows whether a lost request was applied.
+  `approve`, checked again right before the write together with the owner,
+  the requester's grant, the proposal digest and (for a bill) what the
+  receipts still allow. Recovery is `reconcile`: the operation's unique marker
+  in the ERP shows whether a lost request was applied, and a found draft goes
+  through the same checks as a fresh one (`writer.recover`). A missing draft
+  is retried only where the marker is proven unique in the ERP.
 * route `submit`: `hub.operation.run(actions="erp.submit")`. In `approve` mode
   the SDK waits for the requester to approve the exact content (company,
   party, lines, totals, ERP name, version and digest), then rechecks the
@@ -81,6 +85,11 @@ def case(hub) -> dict:
 
         def dispatch(arguments):
             try:
+                desk.recheck(case_row["id"], action="draft", requester=requester, expect=data,
+                             payload=arguments["payload"])
+            except DeskError as exc:
+                raise NotSent(f"{exc.code}: {exc.message}") from None
+            try:
                 return writer.create_draft(arguments["kind"], arguments["payload"], arguments["external_ref"])
             except NotDispatched as exc:
                 raise NotSent(f"{exc.code}: {exc.message}") from None
@@ -95,14 +104,21 @@ def case(hub) -> dict:
                 raise
 
         def reconcile(arguments):
-            found = writer.find(arguments["kind"], arguments["external_ref"])
-            if len(found) == 1:
-                return Reconciled(APPLIED, result=found[0], evidence={"erp_name": found[0]["name"],
-                                                                       "docstatus": found[0]["docstatus"]})
-            if not found:
-                # The marker is unique in the ERP: resending the identical draft can never make a second one.
-                return Reconciled(SAFE_TO_RETRY, evidence={"erp_documents": 0})
-            return Reconciled(UNKNOWN, evidence={"erp_documents": [d["name"] for d in found]})
+            found = writer.recover(arguments["kind"], arguments["payload"], arguments["external_ref"])
+            if found["status"] == "applied":
+                return Reconciled(APPLIED, result=_jsonable(found["view"]),
+                                  evidence={"erp_name": found["view"]["name"], "docstatus": found["view"]["docstatus"],
+                                            "differences": len(found["view"].get("differences") or [])})
+            if found["status"] == "absent":
+                try:
+                    # Resending the identical draft can never make a second one only
+                    # because the ERP refuses a second document with this marker.
+                    writer.require_unique_marker(arguments["kind"])
+                except ERPError as exc:
+                    return Reconciled(UNKNOWN, evidence={"erp_documents": 0, "marker_unique": False, "error": exc.code})
+                return Reconciled(SAFE_TO_RETRY, evidence={"erp_documents": 0, "marker_unique": True})
+            # A draft that differs, is no longer a draft, or several documents: a person decides.
+            return Reconciled(UNKNOWN, evidence={"status": found["status"], "erp_documents": found["names"]})
 
         try:
             view = hub.operation.run(
@@ -116,12 +132,13 @@ def case(hub) -> dict:
                 error_message=str(exc)[:500])["revision"])
             raise
         if not (view or {}).get("name"):
-            # A person resolved an uncertain create as done: the ERP itself says which draft it was.
-            found = writer.find(kind, ref)
-            if len(found) != 1:
-                raise DeskError("reconcile_needed", f"The ERP shows {len(found)} drafts for this operation. "
+            # A person resolved an uncertain create as done: the ERP itself says which
+            # draft it was, checked like a fresh one (a difference stays for review).
+            found = writer.recover(kind, prop["payload"], ref)
+            if found["view"] is None:
+                raise DeskError("reconcile_needed", f"The ERP shows {len(found['names'])} drafts for this operation. "
                                 "Reconcile the case before going on.", status=409)
-            view = found[0]
+            view = found["view"]
         return item.checkpoint("record", lambda: desk._summary(desk.record_draft(
             case_row["id"], work_item_id=item.id, operation_id=None, view=_jsonable(view), actor=requester)))
 
@@ -142,8 +159,10 @@ def case(hub) -> dict:
         return writer.get(kind, data["erp_name"])["approval_digest"]
 
     def dispatch(arguments):
-        if not desk.can(requester, "desk_submit"):
-            raise NotSent("submitter_revoked: the person who asked no longer holds desk_submit")
+        try:
+            desk.recheck(case_row["id"], action="submit", requester=requester, expect=data)
+        except DeskError as exc:
+            raise NotSent(f"{exc.code}: {exc.message}") from None
         desk.record_state(case_row["id"], "submitting", actor=requester, event="document.submitting")
         try:
             return writer.submit_approved(kind, arguments["erp_name"], arguments["approval_digest"])

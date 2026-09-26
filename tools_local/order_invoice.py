@@ -195,7 +195,9 @@ def desk_answer(case: str, expected_revision: int, field: str, value: str, sourc
         case: The case number or id.
         expected_revision: The case revision you saw.
         field: The question's field, for example lines[1].item_code, lines[2].qty, lines[1].uom, lines[1].rate,
-            reference, delivery_date, due_date, party (Customer:ID or Supplier:ID).
+            reference, delivery_date, due_date, party (Customer:ID or Supplier:ID), bill_to_confirmed (yes or
+            no), lines[3].include (yes or no), lines[4].source (an element id, to add a missed line, then its
+            item_code and qty), ack.uncovered.E4 (not_a_line), ack.unreadable.2 (nothing_missing).
         value: The value the person chose.
         source_ref: The element id the person points to as evidence, if any.
     """

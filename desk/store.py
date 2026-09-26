@@ -330,6 +330,9 @@ class Store:
         """Record this case as the owner of a business key, or return the case
         that already holds it."""
         with self.tx() as c:
+            # A case holds one key: after a corrected reference, its old one is free again.
+            c.execute("DELETE FROM desk_duplicate_keys WHERE case_id=? AND NOT (hub_id=? AND company=? AND kind=? AND "
+                      "party_id=? AND reference=?)", (case_id, hub_id, company, kind, party_id, reference))
             row = c.execute("SELECT * FROM desk_duplicate_keys WHERE hub_id=? AND company=? AND kind=? AND party_id=? "
                             "AND reference=?", (hub_id, company, kind, party_id, reference)).fetchone()
             if row is None:
@@ -341,6 +344,12 @@ class Store:
                           "party_id=? AND reference=?", (content_digest, hub_id, company, kind, party_id, reference))
                 return {"case_id": case_id, "content_digest": content_digest, "new": False}
             return {"case_id": row["case_id"], "content_digest": row["content_digest"], "new": False}
+
+    def lookup_business_key(self, *, hub_id: str, company: str, kind: str, party_id: str, reference: str) -> dict | None:
+        with self.read() as c:
+            row = c.execute("SELECT * FROM desk_duplicate_keys WHERE hub_id=? AND company=? AND kind=? AND party_id=? "
+                            "AND reference=?", (hub_id, company, kind, party_id, reference)).fetchone()
+        return dict(row) if row else None
 
     def release_business_key(self, case_id: str) -> None:
         with self.tx() as c:

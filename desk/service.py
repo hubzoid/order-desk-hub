@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import date, datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -116,6 +117,17 @@ class Desk:
         if not self.can(actor, permission):
             raise DeskError("permission_denied", f"{what} needs the {permission} grant on this hub. Ask an "
                             f"administrator: hubzoid grant {actor or 'EMAIL'} {permission} .", status=403)
+
+    def require_start(self, actor: str, workflow: str, what: str):
+        """Hubzoid admits work for a person only when they may start its
+        workflow: the desk grant alone is not enough."""
+        if actor.startswith("cli:"):
+            return
+        perm = "wf_" + workflow.lower()
+        if not (self.can(actor, perm) or self.can(actor, "workflows_manage")):
+            raise DeskError("permission_denied", f"{what} starts the {workflow} workflow, which needs the {perm} "
+                            f"grant as well as the desk grant. Ask an administrator: hubzoid grant {actor} {perm} .",
+                            status=403, grant=perm)
 
     def erp_ctx(self, case: dict | None, actor: str = "desk") -> ERPContext:
         scope = None
@@ -273,9 +285,14 @@ class Desk:
 
     def stage_match(self, case_id: str, station_output, *, elements: list[dict], actor: str = "intake",
                     parse_problems: list | None = None, overrides: dict | None = None, reason: str = "triage",
-                    extraction: dict | None = None) -> dict:
+                    extraction: dict | None = None, expected_revision: int | None = None,
+                    case_fields: dict | None = None) -> dict:
         """Check the extraction against its sources, match and validate, then
-        record proposal revision N and the case's new state."""
+        record proposal revision N and the case's new state.
+
+        A correction or rerun passes the case revision it started from: the
+        new proposal is saved only if nobody changed the case in between (a
+        new owner, another correction), together with `case_fields`."""
         case = self.store.get_case(case_id)
         if reason == "triage" and case.get("proposal_revision"):
             # A replay of the same triage after a crash between the write and its saved stage.
@@ -299,6 +316,10 @@ class Desk:
             party_type=case.get("party_type"), party_id=case.get("party_id"),
             received_date=date.fromisoformat(received), rules=rules, reader=self.erp.reader(),
             erp_ctx=self.erp_ctx(case), overrides=overrides or {})
+        if case_fields:
+            case = {**case, **case_fields}
+            pctx.party_type, pctx.party_id = case.get("party_type"), case.get("party_id")
+            pctx.erp_ctx = self.erp_ctx(case)
         max_lines = int(self.settings()["DESK_MAX_LINES"])
         if len(verified.extraction.lines) > max_lines:
             self._error(case, "too_many_lines", f"The document has {len(verified.extraction.lines)} lines. The limit "
@@ -309,10 +330,21 @@ class Desk:
         except ERPError as exc:
             self._error(case, exc.code, exc.message)
             return self._summary(self.store.get_case(case_id))
+        # An attachment that could not be read may hold lines: never a clean
+        # proposal from the readable part alone, until a person says so.
+        for d in self.store.documents(case_id):
+            if d["parse_status"] == "failed" and (overrides or {}).get(f"ack.unreadable.{d['ordinal']}") != \
+                    "nothing_missing":
+                proposal.questions.append(propose_lib.Question(
+                    "attachment_unreadable", f"{d['label']} could not be read ({d.get('error_code')}). The proposal "
+                    "uses only the readable parts. Is anything missing?", f"ack.unreadable.{d['ordinal']}",
+                    options=[{"value": "nothing_missing", "label": "Nothing is missing"}]).to_dict())
+                proposal.payload = None
         prop = proposal.to_dict()
         for p in parse_problems or []:
             prop["warnings"].append({"code": p["code"], "message": p["message"]})
         state, extra = self._decide(case, proposal)
+        extra = {**(case_fields or {}), **extra}
         with self.store.tx() as c:
             rev = self.store.add_proposal(case_id, created_by=actor, reason=reason, conn=c, kind=proposal.kind,
                                           payload_json=proposal.payload, digest=prop["digest"],
@@ -323,7 +355,8 @@ class Desk:
                                           corrections_json=overrides or {}, policy_digest=rules.digest,
                                           erp_snapshot_json=proposal.erp_versions)
             case = self.store.update_case(
-                case_id, conn=c, state=state, kind=proposal.kind, proposal_revision=rev, policy_digest=rules.digest,
+                case_id, conn=c, expected_revision=expected_revision, state=state, kind=proposal.kind,
+                proposal_revision=rev, policy_digest=rules.digest,
                 business_reference=(proposal.header.get("reference") or {}).get("value"),
                 question_json=proposal.questions or None, error_code=None, error_message=None,
                 flags_json={"warnings": [w["code"] for w in prop["warnings"]]}, event=f"case.{state}", actor=actor,
@@ -335,11 +368,21 @@ class Desk:
             return "duplicate", {"duplicate_of": proposal.duplicate["erp_record"]}
         if proposal.content_key and case.get("party_id"):
             content = erp_digest.sha(proposal.content_key)
-            held = self.store.claim_business_key(hub_id=self.hub_id, company=case["company"], kind=proposal.kind,
-                                                 party_id=case["party_id"],
-                                                 reference=proposal.content_key["reference"], case_id=case["id"],
-                                                 content_digest=content)
-            if held["case_id"] != case["id"]:
+            if case.get("preview"):
+                # A preview reserves nothing: it only says what a real case already holds.
+                held = self.store.lookup_business_key(hub_id=self.hub_id, company=case["company"], kind=proposal.kind,
+                                                      party_id=case["party_id"],
+                                                      reference=proposal.content_key["reference"])
+                if held and held["content_digest"] == content:
+                    other = self.store.get_case(held["case_id"])
+                    return "duplicate", {"duplicate_of": case_number(other) if other else held["case_id"]}
+                held = None
+            else:
+                held = self.store.claim_business_key(hub_id=self.hub_id, company=case["company"],
+                                                     kind=proposal.kind, party_id=case["party_id"],
+                                                     reference=proposal.content_key["reference"], case_id=case["id"],
+                                                     content_digest=content)
+            if held and held["case_id"] != case["id"]:
                 other = self.store.get_case(held["case_id"])
                 if held["content_digest"] == content:
                     return "duplicate", {"duplicate_of": case_number(other) if other else held["case_id"]}
@@ -520,6 +563,9 @@ class Desk:
     # -- corrections --------------------------------------------------------------------------------------
     CORRECTABLE = ("party", "kind", "reference", "transaction_date", "delivery_date", "bill_date", "due_date",
                    "bill_to_confirmed", "purchase_order")
+    _LINE_PATH = re.compile(r"^lines\[([1-9][0-9]{0,2})\]\.(item_code|qty|uom|rate|po_detail|include|source)$")
+    _ACK_PATH = re.compile(r"^ack\.(uncovered\.E[0-9]+|unreadable\.[0-9]+)$")
+    _FIXED_VALUES = {"include": ("yes", "no"), "bill_to_confirmed": ("yes", "no")}
 
     def correct(self, actor: str, case_id: str, *, expected_revision: int, fields: list[dict]) -> dict:
         """Case corrections: a new proposal revision with the given values
@@ -535,13 +581,29 @@ class Desk:
         prop = self.store.proposal(case["id"])
         overrides = dict(prop.get("corrections") or {})
         party = None
+        extracted = len((prop.get("extraction") or {}).get("lines") or [])
         for f in fields:
             path, value = str(f.get("path", "")), f.get("value")
-            ok = path in self.CORRECTABLE or any(path.startswith(f"lines[") and path.endswith(s)
-                                                 for s in ("].item_code", "].qty", "].uom", "].rate", "].po_detail"))
-            if not ok:
+            line = self._LINE_PATH.match(path)
+            if not (path in self.CORRECTABLE or line or self._ACK_PATH.match(path)):
                 raise DeskError("validation_failed", f"{path!r} cannot be corrected. Fields: "
-                                f"{', '.join(self.CORRECTABLE)}, lines[N].item_code|qty|uom|rate|po_detail.", status=422)
+                                f"{', '.join(self.CORRECTABLE)}, lines[N].item_code|qty|uom|rate|po_detail|include|"
+                                "source, ack.uncovered.E<n>, ack.unreadable.<n>.", status=422)
+            field = line.group(2) if line else path
+            if field in self._FIXED_VALUES and str(value) not in self._FIXED_VALUES[field]:
+                raise DeskError("validation_failed", f"{path} is one of {', '.join(self._FIXED_VALUES[field])}.",
+                                status=422)
+            if line and field == "source":
+                n = int(line.group(1))
+                if n <= extracted or n > extracted + 20 or not re.fullmatch(r"E[0-9]+", str(value)):
+                    raise DeskError("validation_failed", f"An added line is numbered after the {extracted} extracted "
+                                    "ones (one at a time) and names its source element, such as E4.", status=422)
+            if path.startswith("ack.uncovered.") and value != "not_a_line":
+                raise DeskError("validation_failed", f"{path} is not_a_line. To add the line instead, set "
+                                f"lines[{extracted + 1}].source to the element.", status=422)
+            if path.startswith("ack.unreadable.") and value != "nothing_missing":
+                raise DeskError("validation_failed", f"{path} is nothing_missing. If something is missing, cancel "
+                                "the case and ask the sender for a readable copy.", status=422)
             if path == "party":
                 ptype, pid = (str(value).split(":", 1) + [""])[:2] if ":" in str(value) else ("", str(value))
                 ptype = ptype or ("Customer" if str(value).startswith("SYN-CUST") else "Supplier"
@@ -554,12 +616,17 @@ class Desk:
         extra = {}
         if party:
             extra = {"party_type": party[0], "party_id": party[1], "party_bound_by": f"chosen by {actor}"}
-            self.store.update_case(case["id"], event="case.party_bound", actor=actor, payload={"party": party[1]}, **extra)
         self._cancel_pending(case, actor, "corrected")
-        self.store.event(case["id"], "case.corrected", actor, {"fields": fields})
         elements = [e for d in self.store.documents(case["id"]) for e in d["elements"]]
-        return self.stage_match(case["id"], None, extraction=prop["extraction"], elements=elements, actor=actor,
-                                overrides=overrides, reason="correction")
+        # Saved only if the case is still the one this person corrected: same
+        # revision, so the same owner and no other correction in between.
+        out = self.stage_match(case["id"], None, extraction=prop["extraction"], elements=elements, actor=actor,
+                               overrides=overrides, reason="correction", expected_revision=case["revision"],
+                               case_fields=extra)
+        self.store.event(case["id"], "case.corrected", actor, {"fields": fields})
+        if party:
+            self.store.event(case["id"], "case.party_bound", actor, {"party": party[1]})
+        return out
 
     def rerun(self, actor: str, case_id: str, *, reason: str) -> dict:
         """Match the same document again with the current rules (after an
@@ -579,7 +646,8 @@ class Desk:
             self.store.release_business_key(case["id"])
         elements = [e for d in self.store.documents(case["id"]) for e in d["elements"]]
         return self.stage_match(case["id"], None, extraction=prop["extraction"], elements=elements, actor=actor,
-                                overrides=prop.get("corrections") or {}, reason=f"rerun: {reason}"[:200])
+                                overrides=prop.get("corrections") or {}, reason=f"rerun: {reason}"[:200],
+                                expected_revision=case["revision"])
 
     def _owner(self, actor: str, case: dict, what: str):
         self.require(actor, "desk_operate", what)
@@ -605,6 +673,7 @@ class Desk:
         if prop["digest"] != digest:
             raise DeskError("stale_preview", "The proposal changed since you reviewed it. Review the current one.",
                             status=409, current_digest=prop["digest"])
+        self.require_start(actor, CASE_WORKFLOW, "Saving an ERP draft")
         return self._admit(actor, case, route="draft", key=f"desk:{case['id']}:p{prop['revision']}:draft",
                            input={"case_id": case["id"], "proposal_revision": prop["revision"], "digest": digest,
                                   "action": "draft"})
@@ -631,6 +700,7 @@ class Desk:
             raise DeskError("stale_preview", "The ERP draft changed since you reviewed it. Review the current draft.",
                             status=409, current_digest=current["approval_digest"],
                             current_version=current["erp_modified"])
+        self.require_start(actor, CASE_WORKFLOW, "Asking to submit")
         return self._admit(actor, case, route="submit",
                            key=f"desk:{case['id']}:{case['erp_name']}:{digest[7:23]}:submit",
                            input={"case_id": case["id"], "erp_name": case["erp_name"], "digest": digest,
@@ -644,11 +714,17 @@ class Desk:
         from hubzoid.work_items.errors import WorkItemError
 
         requester = actor if not actor.startswith("cli:") else self._local_owner()
+        # The key names the requester: after a reassignment the new owner's
+        # request is their own work item, never the previous owner's.
+        args = dict(workflow=CASE_WORKFLOW, key=f"{key}:{requester}", route=route, input=input, requester=requester,
+                    origin={"surface": "desk", "source": "desk", "case_id": case["id"]},
+                    actor=None if actor.startswith("cli:") else actor)
         try:
-            item, created = wi.admit_and_start(self.hub_dir, workflow=CASE_WORKFLOW, key=key, route=route, input=input,
-                                               requester=requester, origin={"surface": "desk", "source": "desk",
-                                                                            "case_id": case["id"]},
-                                               actor=None if actor.startswith("cli:") else actor)
+            item, created = wi.admit_and_start(self.hub_dir, **args)
+            if item["state"] in ("cancelled", "failed", "stopped"):
+                # The same request ended without finishing (cancelled, denied, refused):
+                # asking again is a new request, with a new approval.
+                item, created = wi.admit_and_start(self.hub_dir, generation_mode="new", **args)
         except WorkItemError as exc:
             raise DeskError(exc.code, exc.message, status=exc.status, **exc.fields) from None
         self.store.link(case["id"], work_item_id=item["id"], action=route, insert_only=True,
@@ -669,8 +745,15 @@ class Desk:
     # -- inside the case work item (the workflow calls these) ----------------------------------------------------
     def begin(self, case_id: str, *, action: str, requester: str, work_item_id: str, expect: dict) -> dict:
         """Recheck everything at the start of a draft or submit execution: the
-        case, its owner, the proposal digest and the requester's authority."""
+        case, its owner, the proposal digest, the requester's authority and the
+        hub's write mode. The workflow calls it again right before the ERP
+        write (`recheck`), so a crash and recovery in between never write on
+        a check made earlier."""
         case = self.store.require_case(case_id, self.hub_id)
+        mode = self.write_mode()
+        if mode == "off" or (action == "submit" and mode != "approve"):
+            raise DeskError("write_mode_off", f"erp.submit is {mode} in work-items.yaml now, so this "
+                            f"{'draft' if action == 'draft' else 'submission'} is not sent.", status=403)
         if case.get("owner") != requester:
             raise DeskError("not_owner", f"{case_number(case)} now belongs to {case.get('owner') or 'nobody'}. This "
                             "request was made by someone else and stops.", status=409)
@@ -690,13 +773,28 @@ class Desk:
             raise DeskError("permission_denied", "The requester no longer holds desk_submit.", status=403)
         return {"case": case}
 
+    def recheck(self, case_id: str, *, action: str, requester: str, expect: dict, payload: dict | None = None) -> None:
+        """Right before an ERP write: everything `begin` checks, and for a bill,
+        that the receipts still leave enough to bill (another bill may have
+        taken the same quantity since this proposal was made)."""
+        ctx = self.begin(case_id, action=action, requester=requester, work_item_id="", expect=expect)
+        if action == "draft" and ctx["proposal"]["kind"] == "purchase_invoice" and payload:
+            case = ctx["case"]
+            reads = propose_lib._Reads(self.erp.reader(), self.erp_ctx(case))
+            problems = propose_lib.capacity_problems(reads, case["party_id"], payload)
+            if problems:
+                raise DeskError("receipt_capacity_changed", "The receipts no longer leave enough to bill: "
+                                + "; ".join(problems) + ". Rerun the case to propose against the ERP as it is now.",
+                                status=409, problems=problems)
+
     def submission_arguments(self, case: dict, view: dict) -> dict:
         """The exact content a person approves: everything the Console shows
         under 'Exactly what will be sent'."""
         return {"case": case_number(case), "case_id": case["id"], "company": view["company"],
                 "doctype": view["doctype"], "erp_name": view["name"], "erp_version": view["erp_modified"],
                 "party": view["party"], "reference": view["business_reference"], "currency": view["currency"],
-                "lines": [{k: l.get(k) for k in ("item_code", "qty", "uom", "rate", "amount")} for l in view["lines"]],
+                "lines": [{k: l.get(k) for k in ("item_code", "qty", "uom", "conversion_factor", "rate", "amount")}
+                          for l in view["lines"]],
                 "totals": {k: view["totals"].get(k) for k in ("total", "total_taxes_and_charges", "grand_total")},
                 "approval_digest": view["approval_digest"], "backend": view["backend"],
                 "synthetic": view["synthetic"]}
@@ -807,15 +905,30 @@ class Desk:
                 if link["action"] == "draft":
                     prop = self.store.proposal(case["id"], link.get("proposal_revision"))
                     ref = self.external_ref(case["id"], prop["revision"] if prop else 0)
-                    found = writer.find(self._kind(case), ref)
-                    entry["erp_documents"] = [{k: d[k] for k in ("name", "docstatus", "erp_modified", "content_digest")}
-                                              for d in found]
-                    entry["verdict"] = ("one_document" if len(found) == 1 else "none_found" if not found
-                                        else "several_documents")
-                    if len(found) == 1 and prop and prop.get("payload"):
-                        entry["matches_proposal"] = not [d for d in writer._differences(
-                            writer._expected(self._kind(case), _model(self._kind(case), prop["payload"])), _raw(writer, found[0]))
-                            if d["field"] != "grand_total"]
+                    if prop and prop.get("payload"):
+                        # The same checks a fresh create gets: inert, carrying the marker, equal to the proposal.
+                        found = writer.recover(self._kind(case), prop["payload"], ref)
+                        view = found["view"]
+                        entry["erp_documents"] = ([{k: view[k] for k in ("name", "docstatus", "erp_modified",
+                                                                         "content_digest")}] if view else
+                                                  [{"name": n} for n in found["names"]])
+                        entry["verdict"] = {"applied": "one_document", "absent": "none_found",
+                                            "several": "several_documents", "different": "one_document_differs",
+                                            "not_inert": "not_a_draft"}[found["status"]]
+                        entry["matches_proposal"] = found["status"] == "applied"
+                        if view is not None:
+                            entry["differences"] = view.get("differences") or []
+                        if found["status"] == "absent":
+                            try:
+                                writer.require_unique_marker(self._kind(case))
+                            except ERPError:
+                                entry["verdict"] = "none_found_marker_not_unique"
+                    else:
+                        found = writer.find(self._kind(case), ref)
+                        entry["erp_documents"] = [{k: d[k] for k in ("name", "docstatus", "erp_modified",
+                                                                     "content_digest")} for d in found]
+                        entry["verdict"] = ("one_document" if len(found) == 1 else "none_found" if not found
+                                            else "several_documents")
                 else:
                     try:
                         view = writer.get(self._kind(case), case["erp_name"])
@@ -830,6 +943,14 @@ class Desk:
                                   "none_found": "Nothing carries this operation's marker yet. The unique marker makes a "
                                   "retry safe: the requester resolves it as retry.",
                                   "still_draft": "The draft is not submitted. The requester resolves it as retry.",
+                                  "one_document_differs": "The ERP holds a draft for this operation that differs from "
+                                  "the proposal (see differences). Review it in the ERP. If it is right, the requester "
+                                  "resolves it as done and the case stays marked for review.",
+                                  "not_a_draft": "The document for this operation is no longer a draft in the ERP. "
+                                  "Stop and investigate there before resolving.",
+                                  "none_found_marker_not_unique": "Nothing carries the marker, but the marker field is "
+                                  "not proven unique in the ERP, so a retry could duplicate a delayed create. An "
+                                  "administrator installs the field (hubzoid-erp bootstrap) before anyone retries.",
                                   "several_documents": "An incident: more than one document carries the marker. Stop "
                                   "and investigate in the ERP."}).get(entry.get("verdict"), "Check the ERP.")
                 out["operations"].append(entry)
@@ -875,12 +996,3 @@ class Desk:
                 "intake_enabled": bool(self.settings()["DESK_INTAKE_ENABLED"]), "write_mode": self.write_mode(),
                 "erp": connection}
 
-
-def _model(kind, payload):
-    from erp.write import clean_payload
-
-    return clean_payload(kind, payload)[0]
-
-
-def _raw(writer, view):
-    return writer.rt.get_doc(view["doctype"], view["name"])

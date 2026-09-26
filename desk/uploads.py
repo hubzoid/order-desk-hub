@@ -45,6 +45,7 @@ def submit(desk, actor: str, *, name: str, media_type: str, data: bytes, party: 
     from hubzoid.work_items.errors import WorkItemError
 
     desk.require(actor, "desk_operate", "Sending a document to the desk")
+    desk.require_start(actor, INTAKE_WORKFLOW, "Sending a document to the desk")
     if "upload" not in desk.settings()["DESK_SOURCES"]:
         raise DeskError("source_disabled", "Uploads are not an enabled desk source (DESK_SOURCES).", status=403)
     limits = desk.limits()

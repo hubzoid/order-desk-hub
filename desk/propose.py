@@ -4,13 +4,22 @@ Every value in a proposal carries where it came from (`source`: the element
 id, its location and text) and why it is what it is (`rule`: an exact item
 code, an alias row, a policy rule id, an ERP record and its version). Anything
 the rules do not decide becomes a typed question with its options. Money and
-quantities are Decimal, ERP currency precision, never floats, and there is no
+quantities are Decimal, never floats: a rate is kept exactly as the ERP or the
+document gives it (ERPNext rounds to its own precision, and the reread shows
+any difference), and only amounts are rounded to the cent. There is no
 tolerance that lets a difference through.
 
 Orders (from a bound customer) become a Sales Order payload. Supplier invoices
 (from a bound supplier) become a Purchase Invoice payload matched to purchase
 order and receipt rows, never billing more than was received and not yet
-billed.
+billed, counted in stock units: accepted quantities less returns, and every
+non-cancelled bill against the receipt row or the order row.
+
+The extractor's lines are checked for completeness here too: a line that
+repeats another from the same source text, or a source element that looks like
+a line (it names an ERP item, reads "N x ...", or sits among cited table rows)
+but feeds no line, is a question. A person can remove a line, keep a repeat,
+add a line from a source element, or confirm an element is not a line.
 """
 from __future__ import annotations
 
@@ -23,11 +32,15 @@ from erp import digest as erp_digest
 from erp.errors import ERPError
 from erp.models import ERPContext
 
-from .extract import Extraction, norm_text, parse_iso, to_number
+from .extract import Extraction, Line, norm_text, parse_iso, to_number
 from .policy import ALIASES, INVOICE_POLICY, ORDER_POLICY, Rules, norm
 
 CENT = Decimal("0.01")
 _CODE_TOKEN = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]{3,}")
+#: "80 x Synthetic Hex Bolt M8", "12 × pens": a quantity times a description.
+_QTY_TIMES = re.compile(r"(?:^|[\s,;:(\-])\d+(?:[.,]\d+)?\s*[x×*]\s+[A-Za-z]", re.I)
+_DATE_LIKE = re.compile(r"^\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}$")
+_TOTAL_WORDS = re.compile(r"(?i)\b(sub-?total|total|tax|vat|gst|discount|shipping|freight|balance|amount due)\b")
 
 
 def money(d: Decimal) -> Decimal:
@@ -127,6 +140,16 @@ def _item_candidates(reads: _Reads, description: str | None) -> list[dict]:
     return out[:10]
 
 
+def _exact_item(reads: _Reads, text: str | None) -> dict | None:
+    text = (text or "").strip()
+    if not text:
+        return None
+    rec = reads.get("items", text)
+    if rec is None and text.upper() != text:
+        rec = reads.get("items", text.upper())
+    return rec
+
+
 def match_item(ctx: Context, reads: _Reads, line, n: int, src: dict | None) -> tuple[dict | None, list[Question]]:
     party = ctx.party_id or ""
     override = ctx.overrides.get(f"lines[{n}].item_code")
@@ -137,23 +160,34 @@ def match_item(ctx: Context, reads: _Reads, line, n: int, src: dict | None) -> t
                                    n, answer_type="text", source=src)]
         return {"code": rec["id"], "name": rec["fields"]["item_name"], "record": rec,
                 "rule": {"id": "correction", "text": "Chosen by a person for this case"}}, []
-    tried = []
-    tokens = [t for t in _CODE_TOKEN.findall(line.raw_text or "") if any(ch.isdigit() for ch in t)]
-    for text in [line.item_code_seen] + tokens:
-        if not text or text in tried:
-            continue
-        tried.append(text)
-        rec = reads.get("items", text.strip())
-        if rec is None and text.strip().upper() != text.strip():
-            rec = reads.get("items", text.strip().upper())
+    def exact_hit(rec):
+        if rec["fields"].get("disabled"):
+            return None, [Question("item_disabled", f"Line {n}: item {rec['id']} is disabled in the ERP. Choose a "
+                                   "replacement or remove the line.", f"lines[{n}].item_code", n,
+                                   options=_item_candidates(reads, rec["fields"].get("item_name")),
+                                   source=src, rule=f"{ORDER_POLICY}#O4")]
+        return {"code": rec["id"], "name": rec["fields"]["item_name"], "record": rec,
+                "rule": {"id": "exact_item_code", "text": f"The document names ERP item {rec['id']} exactly"}}, []
+
+    if line.item_code_seen:
+        rec = _exact_item(reads, line.item_code_seen)
         if rec is not None:
-            if rec["fields"].get("disabled"):
-                return None, [Question("item_disabled", f"Line {n}: item {rec['id']} is disabled in the ERP. Choose a "
-                                       "replacement or remove the line.", f"lines[{n}].item_code", n,
-                                       options=_item_candidates(reads, rec["fields"].get("item_name")),
-                                       source=src, rule=f"{ORDER_POLICY}#O4")]
-            return {"code": rec["id"], "name": rec["fields"]["item_name"], "record": rec,
-                    "rule": {"id": "exact_item_code", "text": f"The document names ERP item {rec['id']} exactly"}}, []
+            return exact_hit(rec)
+    # A code in the line's own (verified) source text counts only when it names
+    # exactly one ERP item: an element can hold several lines.
+    named = {}
+    for token in _CODE_TOKEN.findall(line.raw_text or ""):
+        if any(ch.isdigit() for ch in token):
+            rec = _exact_item(reads, token)
+            if rec is not None:
+                named[rec["id"]] = rec
+    if len(named) == 1:
+        return exact_hit(next(iter(named.values())))
+    if len(named) > 1:
+        return None, [Question("ambiguous_item", f"Line {n}: its source text names {len(named)} ERP items "
+                               f"({', '.join(sorted(named))}). Which one is this line?", f"lines[{n}].item_code", n,
+                               options=[{"value": c, "label": f"{c} {r['fields'].get('item_name')}"}
+                                        for c, r in sorted(named.items())], source=src, rule=f"{ORDER_POLICY}#O3")]
     for text in (line.item_code_seen, line.description_seen):
         hits = ctx.rules.item_alias(ctx.company, party, text)
         codes = {a.item_code for a in hits}
@@ -271,9 +305,199 @@ def selling_rate(ctx: Context, reads: _Reads, item: dict, unit: dict, on: date, 
         return None, [Question("price_missing", f"Line {n}: the price {p['id']} is per {price_uom}, which this line "
                                "cannot convert.", f"lines[{n}].rate", n, answer_type="decimal", source=src)]
     kind = "customer contract price" if p["fields"].get("customer") else "price list"
-    return {"rate": money(rate), "record": p["id"], "rule": {"id": "O6", "text":
+    return {"rate": rate, "record": p["id"], "rule": {"id": "O6", "text":
             f"{ctx.selling_price_list} {kind} {p['id']}: {dstr(base)} per {price_uom}"
             + (f" x {dstr(unit['conversion_factor'])}" if rate != base else ""), "cite": f"{ORDER_POLICY}#O6"}}, []
+
+
+# -- billing capacity -----------------------------------------------------------------------------
+
+def stock_qty(row: dict) -> Decimal:
+    """A row's quantity in stock units: ERPNext's stock_qty, else qty x factor."""
+    if row.get("stock_qty") not in (None, ""):
+        return Decimal(str(row["stock_qty"]))
+    return Decimal(str(row.get("qty") or 0)) * Decimal(str(row.get("conversion_factor") or 1))
+
+
+class Billing:
+    """What a supplier's receipts still allow to be billed, in stock units.
+
+    A receipt row can be billed up to its accepted quantity (`stock_qty`: the
+    accepted `qty` times its factor, never the gross received quantity, which
+    includes rejected goods) less what was returned (`returned_qty`, kept by
+    ERPNext in stock units). Return receipts are not capacity. Every
+    non-cancelled bill counts, drafts too, and a debit note counts negatively:
+    against the receipt row (`pr_detail`) and, for bills made straight from the
+    order, against the order row (`po_detail`)."""
+
+    def __init__(self, reads: "_Reads", supplier: str | None, *, exclude_invoices=()):
+        self.reads, self.supplier = reads, supplier
+        self.exclude = set(exclude_invoices)
+        self._receipts: list[dict] | None = None
+        self._billed: dict[tuple, Decimal] = {}
+
+    def receipts(self) -> list[dict]:
+        if self._receipts is None:
+            self._receipts = []
+            for rec in self.reads.all("purchase_receipts", {"supplier": self.supplier, "docstatus": 1}):
+                full = self.reads.get("purchase_receipts", rec["id"])
+                if full and not int(full["fields"].get("is_return") or 0):
+                    self._receipts.append(full)
+        return self._receipts
+
+    def receipt_rows(self, po_row: str) -> list[dict]:
+        out = []
+        for pr in self.receipts():
+            for row in pr["rows"] or []:
+                if row.get("purchase_order_item") == po_row:
+                    capacity = stock_qty(row) - Decimal(str(row.get("returned_qty") or 0))
+                    out.append({"receipt": pr["id"], **row, "capacity": max(capacity, Decimal(0))})
+        return out
+
+    def _billed_on(self, query_key: str, field: str, row_id: str) -> Decimal:
+        key = (field, row_id)
+        if key not in self._billed:
+            total = Decimal(0)
+            for rec in self.reads.all("purchase_invoices", {query_key: row_id}):
+                if rec["id"] in self.exclude:
+                    continue
+                full = self.reads.get("purchase_invoices", rec["id"])
+                if full is None or full["fields"].get("docstatus") == 2:
+                    continue
+                for row in full["rows"] or []:
+                    if row.get(field) == row_id:
+                        total += stock_qty(row)
+            self._billed[key] = total
+        return self._billed[key]
+
+    def billed_receipt_row(self, pr_row: str) -> Decimal:
+        return self._billed_on("billed_receipt_row", "pr_detail", pr_row)
+
+    def billed_order_row(self, po_row: str) -> Decimal:
+        return self._billed_on("billed_order_row", "po_detail", po_row)
+
+
+def capacity_problems(reads: "_Reads", supplier: str, payload: dict, *, exclude_invoices=()) -> list[str]:
+    """Recheck a saved proposal's bill lines against the ERP as it is now: the
+    receipts and other bills may have changed since the proposal was made.
+    Returns one message per line that would bill more than is left."""
+    billing = Billing(reads, supplier, exclude_invoices=exclude_invoices)
+    want_receipt: dict[str, Decimal] = {}
+    want_order: dict[str, Decimal] = {}
+    for line in payload.get("items") or []:
+        q = Decimal(str(line["qty"])) * Decimal(str(line.get("expected_conversion_factor") or 1))
+        if line.get("pr_detail"):
+            want_receipt[line["pr_detail"]] = want_receipt.get(line["pr_detail"], Decimal(0)) + q
+        if line.get("po_detail"):
+            want_order[line["po_detail"]] = want_order.get(line["po_detail"], Decimal(0)) + q
+    problems = []
+    for po_row, wanted in want_order.items():
+        rows = billing.receipt_rows(po_row)
+        free = sum((r["capacity"] for r in rows), Decimal(0)) - billing.billed_order_row(po_row)
+        if wanted > free:
+            problems.append(f"order row {po_row}: {dstr(wanted)} wanted, {dstr(max(free, Decimal(0)))} left to bill")
+        for r in rows:
+            if r["row_id"] in want_receipt:
+                left = r["capacity"] - billing.billed_receipt_row(r["row_id"])
+                if want_receipt[r["row_id"]] > left:
+                    problems.append(f"receipt row {r['row_id']}: {dstr(want_receipt[r['row_id']])} wanted, "
+                                    f"{dstr(max(left, Decimal(0)))} left to bill")
+    return problems
+
+
+# -- completeness ---------------------------------------------------------------------------------
+
+def _prepare_lines(ctx: Context, extraction: Extraction, by_id: dict, questions: list) -> list[tuple]:
+    """The lines to propose, as (n, line, source, flag): the extracted lines
+    (flag "removed" when a person removed one), then any line a person added
+    from a source element (flag "added"). A line that repeats an earlier one
+    from the same source text is a question until a person keeps or removes it."""
+    ov = ctx.overrides
+    out, seen = [], {}
+    for n, line in enumerate(extraction.lines, 1):
+        src = _source(by_id, line.source_ref)
+        include = ov.get(f"lines[{n}].include")
+        if include == "no":
+            out.append((n, line, src, "removed"))
+            continue
+        sig = (line.source_ref, norm_text(line.raw_text), norm_text(line.item_code_seen),
+               norm_text(line.description_seen), line.quantity, norm_text(line.unit_seen))
+        if sig in seen and include != "yes":
+            questions.append(Question("line_repeated", f"Line {n} repeats line {seen[sig]} from the same source text. "
+                                      "Is the item really listed twice?", f"lines[{n}].include", n,
+                                      options=[{"value": "no", "label": "No, remove the repeat"},
+                                               {"value": "yes", "label": "Yes, keep both"}], source=src))
+        seen.setdefault(sig, n)
+        out.append((n, line, src, None))
+    n = len(extraction.lines)
+    while ov.get(f"lines[{n + 1}].source"):
+        n += 1
+        ref = ov[f"lines[{n}].source"]
+        if ref not in by_id:
+            questions.append(Question("line_source_unknown", f"Line {n}: {ref} is not an element of this document.",
+                                      f"lines[{n}].source", n, answer_type="text"))
+            continue
+        out.append((n, Line(source_ref=ref, raw_text=by_id[ref]["text"], item_code_seen=None, description_seen=None,
+                            quantity=None, unit_seen=None, unit_price=None, amount=None, purchase_order_seen=None),
+                    _source(by_id, ref), "added"))
+    return out
+
+
+def _uncovered(ctx: Context, reads: _Reads, elements: list[dict], prepared: list[tuple], lines_out: list[dict]) -> list:
+    """Source elements that look like a line but feed none: the extractor may
+    have left a line out. One question each, until a person adds the line or
+    says it is not one."""
+    ov = ctx.overrides
+    items_by_n = {l["n"]: (l.get("item") or {}).get("code") for l in lines_out}
+    cited: dict[str, set] = {}
+    for n, line, _src, flag in prepared:
+        if flag == "removed":
+            continue
+        codes = cited.setdefault(line.source_ref, set())
+        if items_by_n.get(n):
+            codes.add(items_by_n[n])
+        rec = _exact_item(reads, line.item_code_seen)
+        if rec is not None:
+            codes.add(rec["id"])
+    order = [e["id"] for e in elements]
+    cited_rows = [order.index(e["id"]) for e in elements if e.get("kind") == "row" and e["id"] in cited]
+    out = []
+    for i, e in enumerate(elements):
+        eid, text = e["id"], e.get("text") or ""
+        if ov.get(f"ack.uncovered.{eid}") == "not_a_line":
+            continue
+        reasons = []
+        # Code-like words only (letters and digits, not a date), so a page of text costs few reads.
+        tokens = {tok for tok in _CODE_TOKEN.findall(text) if any(ch.isdigit() for ch in tok)
+                  and any(ch.isalpha() for ch in tok) and not _DATE_LIKE.match(tok)}
+        named = sorted({rec["id"] for tok in tokens for rec in [_exact_item(reads, tok)] if rec is not None}
+                       - cited.get(eid, set()))
+        if named:
+            reasons.append(f"it names {', '.join(named)}")
+        if eid not in cited and _QTY_TIMES.search(text):
+            reasons.append("it reads like a quantity of something")
+        if (eid not in cited and e.get("kind") == "row" and cited_rows and min(cited_rows) < i < max(cited_rows)
+                and any(ch.isdigit() for ch in text) and not _TOTAL_WORDS.search(text)):
+            reasons.append("it is a row among the order's lines")
+        if reasons:
+            out.append(Question("line_not_extracted", f"{eid} ({e.get('loc')}) looks like a line ({'; '.join(reasons)}), "
+                                "but no proposed line comes from it. If it is one, add it as a line from "
+                                f"{eid} with its item and quantity. Otherwise say it is not a line.",
+                                f"ack.uncovered.{eid}", options=[{"value": "not_a_line", "label": "It is not a line"}],
+                                source={"element": eid, "loc": e.get("loc"), "text": text}))
+    return out
+
+
+def names_company(company: str, written: str | None) -> bool:
+    """Whether a bill-to text names the company: its words in order, at word
+    boundaries, and not followed by another word ("Synthetic Meridian
+    Distribution Overseas" is a different company). Punctuation, a number or
+    the end may follow ("..., 1 Harbor Road", "... (synthetic sample)")."""
+    words = re.findall(r"[a-z0-9]+", norm_text(company))
+    if not words:
+        return False
+    pattern = r"(?<![a-z0-9])" + r"[\s.,&'-]*".join(map(re.escape, words)) + r"(?!\s*[a-z])"
+    return re.search(pattern, norm_text(written or "")) is not None
 
 
 # -- the proposal ---------------------------------------------------------------------------------
@@ -376,6 +600,7 @@ def build(ctx: Context, extraction: Extraction, problems: list[dict], elements: 
     lines_out: list[dict] = []
     payload_lines: list[dict] = []
     computed = Decimal(0)
+    prepared = _prepare_lines(ctx, extraction, by_id, questions)
 
     if kind == "sales_order":
         on, src = cited_date("transaction_date", extraction.document_date)
@@ -392,9 +617,14 @@ def build(ctx: Context, extraction: Extraction, problems: list[dict], elements: 
                                       f"{on}.", "delivery_date", answer_type="date", rule=f"{ORDER_POLICY}#O9"))
         header["warehouse"] = {"value": ctx.warehouse, "rule": "connectors/erpnext.yaml warehouses[0]"}
         header["price_list"] = {"value": ctx.selling_price_list, "rule": "connectors/erpnext.yaml selling_price_list"}
-        for n, line in enumerate(extraction.lines, 1):
-            src_line = _source(by_id, line.source_ref)
+        for n, line, src_line, flag in prepared:
             out = {"n": n, "source": src_line, "raw_text": line.raw_text, "questions": []}
+            if flag == "removed":
+                lines_out.append({**out, "removed": True, "rule": {"id": "correction",
+                                                                    "text": "Removed by a person for this case"}})
+                continue
+            if flag == "added":
+                out["added"] = {"id": "correction", "text": f"Added by a person from {line.source_ref}"}
             qty = to_number(ov.get(f"lines[{n}].qty")) if ov.get(f"lines[{n}].qty") else to_number(line.quantity)
             if qty is None or qty <= 0:
                 q = Question("quantity_missing", f"Line {n}: no quantity was found in \"{line.raw_text}\".",
@@ -418,21 +648,28 @@ def build(ctx: Context, extraction: Extraction, problems: list[dict], elements: 
                                           "whole number.", f"lines[{n}].qty", n, answer_type="decimal",
                                           source=src_line))
             out["unit"] = {k: dstr(v) if isinstance(v, Decimal) else v for k, v in unit.items()}
-            rate, qs = selling_rate(ctx, reads, item, unit, on, n, src_line)
-            questions += qs
-            if ov.get(f"lines[{n}].rate") and rate is not None:
-                rate = {"rate": money(to_number(ov[f"lines[{n}].rate"])), "record": None,
+            if ov.get(f"lines[{n}].rate"):
+                # A person's rate for this case answers a missing, ambiguous or differing price.
+                rate = {"rate": to_number(ov[f"lines[{n}].rate"]), "record": None,
                         "rule": {"id": "correction", "text": "Rate chosen by a person for this case"}}
+                if rate["rate"] is None or rate["rate"] < 0:
+                    questions.append(Question("rate_invalid", f"Line {n}: {ov[f'lines[{n}].rate']!r} is not a rate.",
+                                              f"lines[{n}].rate", n, answer_type="decimal", source=src_line))
+                    lines_out.append(out)
+                    continue
+            else:
+                rate, qs = selling_rate(ctx, reads, item, unit, on, n, src_line)
+                questions += qs
             if rate is None:
                 lines_out.append(out)
                 continue
             stated = to_number(line.unit_price)
-            if stated is not None and money(stated) != rate["rate"] and not ov.get(f"lines[{n}].rate"):
+            if stated is not None and stated != rate["rate"] and not ov.get(f"lines[{n}].rate"):
                 questions.append(Question("price_difference", f"Line {n}: the order says {dstr(stated)} per "
                                           f"{unit['uom']} but the ERP price is {dstr(rate['rate'])}. Which applies?",
                                           f"lines[{n}].rate", n,
                                           options=[{"value": dstr(rate["rate"]), "label": f"ERP price {dstr(rate['rate'])}"},
-                                                   {"value": dstr(money(stated)), "label": f"The order's {dstr(stated)}"}],
+                                                   {"value": dstr(stated), "label": f"The order's {dstr(stated)}"}],
                                           source=src_line, rule=f"{ORDER_POLICY}#O6"))
             amount = money(unit["qty"] * rate["rate"])
             stated_amount = to_number(line.amount)
@@ -446,21 +683,25 @@ def build(ctx: Context, extraction: Extraction, problems: list[dict], elements: 
             out["amount"] = dstr(amount)
             computed += amount
             payload_lines.append({"item_code": item["code"], "qty": dstr(unit["qty"]), "uom": unit["uom"],
-                                  "rate": dstr(rate["rate"]), "source_ref": line.source_ref})
+                                  "rate": dstr(rate["rate"]), "source_ref": line.source_ref,
+                                  "expected_conversion_factor": dstr(unit["conversion_factor"])})
             lines_out.append(out)
-        if not extraction.lines:
+        if not [x for x in prepared if x[3] != "removed"]:
             questions.append(Question("no_lines", "No order lines were found. What should be ordered?", "lines",
                                       answer_type="text"))
     elif kind == "purchase_invoice":
-        _invoice(ctx, reads, extraction, by_id, header, lines_out, payload_lines, questions, cited_date)
+        _invoice(ctx, reads, extraction, by_id, header, lines_out, payload_lines, questions, cited_date, prepared)
         computed = sum((Decimal(l["amount"]) for l in lines_out if l.get("amount")), Decimal(0))
+    if kind:
+        questions += _uncovered(ctx, reads, elements, prepared, lines_out)
 
     # Totals.
     stated_total = to_number(extraction.stated_total.value) if extraction.stated_total else None
     totals = {"computed": dstr(money(computed)), "stated": dstr(stated_total),
               "source": _source(by_id, extraction.stated_total.source_ref) if extraction.stated_total else None}
-    if stated_total is not None and money(stated_total) != money(computed) and payload_lines and \
-            len(payload_lines) == len(extraction.lines):
+    priced = [l for l in lines_out if not l.get("removed")]
+    if stated_total is not None and money(stated_total) != money(computed) and priced and \
+            all(l.get("amount") for l in priced):
         questions.append(Question("total_mismatch", f"The document's total {dstr(stated_total)} is not the sum of its "
                                   f"lines {dstr(money(computed))}.", "total", answer_type="text",
                                   source=totals["source"], rule=f"{ORDER_POLICY}#O10" if kind == "sales_order"
@@ -496,16 +737,27 @@ def build(ctx: Context, extraction: Extraction, problems: list[dict], elements: 
                        "items": payload_lines}
     content_key = None
     if kind and ctx.party_id and ref:
+        # Everything that makes two documents with one reference the same: what
+        # the desk would send (items, quantities, units, rates, receipt rows) and
+        # what the document itself states (quantities, units, prices, amounts,
+        # total), so a resend with another price is never taken for the same one.
+        def num(v):
+            return dstr(to_number(v)) if v is not None else None
+
         content_key = {"kind": kind, "party": ctx.party_id, "reference": erp_digest.normalize_reference(ref),
-                       "lines": [[l["item_code"], l["qty"], l["uom"]] for l in payload_lines]
-                       or [[norm_text(l.raw_text)] for l in extraction.lines]}
+                       "lines": [[l["item_code"], l["qty"], l["uom"], l["rate"], l.get("po_detail"), l.get("pr_detail")]
+                                 for l in payload_lines]
+                       or [[norm_text(l.raw_text), l.quantity, l.unit_price] for l in extraction.lines],
+                       "stated": [[num(l.quantity), norm_text(l.unit_seen), num(l.unit_price), num(l.amount)]
+                                  for _n, l, _s, flag in prepared if flag != "removed"],
+                       "stated_total": dstr(stated_total)}
     return Proposal(kind=kind, payload=payload, header=header, lines=lines_out,
                     questions=[q.to_dict() for q in questions], warnings=warnings, totals=totals,
                     duplicate=duplicate, erp_versions=dict(reads.versions), content_key=content_key)
 
 
 def _invoice(ctx: Context, reads: _Reads, extraction: Extraction, by_id, header, lines_out, payload_lines, questions,
-             cited_date):
+             cited_date, prepared):
     ov = ctx.overrides
     bill_date, bsrc = cited_date("bill_date", extraction.document_date)
     header["bill_date"] = {"value": bill_date.isoformat() if bill_date else None, "source": bsrc}
@@ -526,16 +778,24 @@ def _invoice(ctx: Context, reads: _Reads, extraction: Extraction, by_id, header,
     billed_to = extraction.bill_to_seen
     header["bill_to"] = {"value": billed_to.value if billed_to else None,
                          "source": _source(by_id, billed_to.source_ref) if billed_to else None}
-    if not ov.get("bill_to_confirmed"):
+    confirmed = ov.get("bill_to_confirmed")
+    if confirmed == "no":
+        questions.append(Question("not_our_invoice", f"A person answered that this invoice is not billed to "
+                                  f"{ctx.company}. It is never booked here: cancel the case.", "bill_to_confirmed",
+                                  options=[{"value": "yes", "label": "It is ours after all"}],
+                                  rule=f"{INVOICE_POLICY}#I1"))
+    elif confirmed != "yes":
         if billed_to is None:
             questions.append(Question("bill_to_missing", f"The invoice does not say it is billed to {ctx.company}. Is "
-                                      "it ours?", "bill_to_confirmed", options=[{"value": "yes", "label": "Yes, ours"}],
+                                      "it ours?", "bill_to_confirmed", options=[{"value": "yes", "label": "Yes, ours"},
+                                                                                {"value": "no", "label": "No"}],
                                       rule=f"{INVOICE_POLICY}#I1"))
-        elif norm(ctx.company) not in norm(billed_to.value):
+        elif not names_company(ctx.company, billed_to.value):
             questions.append(Question("wrong_company", f"The invoice is billed to \"{billed_to.value}\", not "
-                                      f"{ctx.company}. It is never booked here.", "bill_to_confirmed",
-                                      answer_type="text", source=_source(by_id, billed_to.source_ref),
-                                      rule=f"{INVOICE_POLICY}#I1"))
+                                      f"{ctx.company}. It is never booked here unless a person confirms it is ours.",
+                                      "bill_to_confirmed", options=[{"value": "yes", "label": "It is ours, written "
+                                                                     "differently"}, {"value": "no", "label": "Not ours"}],
+                                      source=_source(by_id, billed_to.source_ref), rule=f"{INVOICE_POLICY}#I1"))
     if extraction.stated_tax:
         tax = to_number(extraction.stated_tax.value)
         if tax:
@@ -564,38 +824,18 @@ def _invoice(ctx: Context, reads: _Reads, extraction: Extraction, by_id, header,
     if not po_ids:
         questions.append(Question("missing_purchase_order", "The invoice cites no purchase order. Which order does it "
                                   "bill?", "purchase_order", answer_type="text", rule=f"{INVOICE_POLICY}#I4"))
-    receipts = None
-    used: dict[str, Decimal] = {}
+    billing = Billing(reads, ctx.party_id)
+    used_receipt: dict[str, Decimal] = {}     # stock units this invoice already takes, per receipt row
+    used_order: dict[str, Decimal] = {}       # and per order row
 
-    def receipt_rows(po_row: str) -> list[dict]:
-        nonlocal receipts
-        if receipts is None:
-            receipts = []
-            for rec in reads.all("purchase_receipts", {"supplier": ctx.party_id, "docstatus": 1}):
-                full = reads.get("purchase_receipts", rec["id"])
-                if full:
-                    receipts.append(full)
-        out = []
-        for pr in receipts:
-            for row in pr["rows"] or []:
-                if row.get("purchase_order_item") == po_row:
-                    out.append({"receipt": pr["id"], **row})
-        return out
-
-    def billed(pr_row: str) -> Decimal:
-        total = Decimal(0)
-        for rec in reads.all("purchase_invoices", {"billed_receipt_row": pr_row}):
-            full = reads.get("purchase_invoices", rec["id"])
-            if full is None or full["fields"].get("docstatus") == 2:
-                continue
-            for row in full["rows"] or []:
-                if row.get("pr_detail") == pr_row:
-                    total += Decimal(row["qty"])
-        return total
-
-    for n, line in enumerate(extraction.lines, 1):
-        src = _source(by_id, line.source_ref)
+    for n, line, src, flag in prepared:
         out = {"n": n, "source": src, "raw_text": line.raw_text}
+        if flag == "removed":
+            lines_out.append({**out, "removed": True, "rule": {"id": "correction",
+                                                                "text": "Removed by a person for this case"}})
+            continue
+        if flag == "added":
+            out["added"] = {"id": "correction", "text": f"Added by a person from {line.source_ref}"}
         qty = to_number(ov.get(f"lines[{n}].qty")) if ov.get(f"lines[{n}].qty") else to_number(line.quantity)
         if qty is None or qty <= 0:
             questions.append(Question("quantity_missing", f"Line {n}: no quantity was found.", f"lines[{n}].qty", n,
@@ -614,6 +854,7 @@ def _invoice(ctx: Context, reads: _Reads, extraction: Extraction, by_id, header,
             lines_out.append(out)
             continue
         out["unit"] = {k: dstr(v) if isinstance(v, Decimal) else v for k, v in unit.items()}
+        stock_uom = item["record"]["fields"]["stock_uom"]
         rows = [(po, r) for po in pos for r in (po["rows"] or []) if r.get("item_code") == item["code"]]
         if ov.get(f"lines[{n}].po_detail"):
             rows = [(po, r) for po, r in rows if r["row_id"] == ov[f"lines[{n}].po_detail"]]
@@ -633,73 +874,97 @@ def _invoice(ctx: Context, reads: _Reads, extraction: Extraction, by_id, header,
             lines_out.append(out)
             continue
         po, po_row = rows[0]
-        po_rate = Decimal(po_row["rate"])
-        rate = to_number(line.unit_price)
-        if ov.get(f"lines[{n}].rate"):
-            rate = to_number(ov[f"lines[{n}].rate"])
+        # The order's rate in this line's unit: rates are compared per stock unit.
+        po_factor = Decimal(str(po_row.get("conversion_factor") or 1))
+        po_rate = Decimal(str(po_row["rate"]))
+        same_unit = po_row.get("uom") == unit["uom"]
+        po_rate_here = po_rate if same_unit else po_rate / po_factor * unit["conversion_factor"]
+        rate = to_number(ov[f"lines[{n}].rate"]) if ov.get(f"lines[{n}].rate") else to_number(line.unit_price)
         if rate is None:
-            rate = po_rate
-            rate_rule = {"id": "I5", "text": f"No rate is written, so the order's {dstr(po_rate)}"}
-        elif money(rate) != money(po_rate) and not ov.get(f"lines[{n}].rate"):
-            questions.append(Question("price_difference", f"Line {n}: the invoice says {dstr(rate)} but "
-                                      f"{po['id']} ordered at {dstr(po_rate)}.", f"lines[{n}].rate", n,
-                                      options=[{"value": dstr(po_rate), "label": f"Order price {dstr(po_rate)}"},
+            if not same_unit and po_rate_here != po_rate_here.quantize(Decimal("0.000000001")):
+                questions.append(Question("rate_missing", f"Line {n}: the invoice gives no rate, and {po['id']} prices "
+                                          f"{item['code']} per {po_row.get('uom')}, not per {unit['uom']}. What is the "
+                                          f"rate per {unit['uom']}?", f"lines[{n}].rate", n, answer_type="decimal",
+                                          source=src, rule=f"{INVOICE_POLICY}#I5"))
+                lines_out.append(out)
+                continue
+            rate = po_rate_here
+            rate_rule = {"id": "I5", "text": f"No rate is written, so the order's {dstr(po_rate)} per "
+                         f"{po_row.get('uom') or unit['uom']}" + ("" if same_unit else f", per {unit['uom']}")}
+        elif rate != po_rate_here and not ov.get(f"lines[{n}].rate"):
+            questions.append(Question("price_difference", f"Line {n}: the invoice says {dstr(rate)} per {unit['uom']} "
+                                      f"but {po['id']} ordered at {dstr(po_rate)} per {po_row.get('uom') or unit['uom']}.",
+                                      f"lines[{n}].rate", n,
+                                      options=[{"value": dstr(po_rate_here), "label": f"Order price {dstr(po_rate_here)}"},
                                                {"value": dstr(rate), "label": f"Invoice price {dstr(rate)}"}],
                                       source=src, rule=f"{INVOICE_POLICY}#I5"))
             lines_out.append(out)
             continue
         else:
-            rate_rule = {"id": "I5", "text": f"Matches {po['id']} row {po_row['idx']} at {dstr(po_rate)}"}
-        prs = receipt_rows(po_row["row_id"])
+            rate_rule = {"id": "I5", "text": f"Matches {po['id']} row {po_row['idx']} at {dstr(po_rate)} per "
+                         f"{po_row.get('uom') or unit['uom']}"}
+        prs = billing.receipt_rows(po_row["row_id"])
         if not prs:
             questions.append(Question("receipt_missing", f"Line {n}: nothing has been received against {po['id']} row "
                                       f"{po_row['idx']} yet, so it cannot be billed.", f"lines[{n}].qty", n,
                                       answer_type="text", source=src, rule=f"{INVOICE_POLICY}#I7"))
             lines_out.append(out)
             continue
-        remaining_total = Decimal(0)
+        need = unit["qty"] * unit["conversion_factor"]                 # stock units
+        order_free = (sum((r["capacity"] for r in prs), Decimal(0)) - billing.billed_order_row(po_row["row_id"])
+                      - used_order.get(po_row["row_id"], Decimal(0)))
+        remaining_total = max(Decimal(0), min(order_free, sum(
+            (max(Decimal(0), r["capacity"] - billing.billed_receipt_row(r["row_id"]) - used_receipt.get(r["row_id"], 0))
+             for r in prs), Decimal(0))))
         allocation = []
-        need = unit["qty"] * unit["conversion_factor"]
+        budget = max(order_free, Decimal(0))
         for pr in prs:
-            free = Decimal(pr["received_qty"] or pr["qty"]) - billed(pr["row_id"]) - used.get(pr["row_id"], Decimal(0))
-            remaining_total += max(free, Decimal(0))
-            if need > 0 and free > 0:
-                take = min(free, need)
+            free = pr["capacity"] - billing.billed_receipt_row(pr["row_id"]) - used_receipt.get(pr["row_id"], Decimal(0))
+            take = min(free, need, budget)
+            if take > 0:
                 allocation.append((pr, take))
                 need -= take
+                budget -= take
         if need > 0:
             got = unit["qty"] * unit["conversion_factor"]
+            # The answer is a quantity as the document writes it (lines[n].qty), so offer it in that unit.
+            in_uom = remaining_total / unit["conversion_factor"]
+            as_written = in_uom / Decimal(str(unit.get("factor") or 1))
             questions.append(Question("receipt_quantity_exceeded", f"Line {n}: the invoice bills {dstr(got)} "
-                                      f"{item['record']['fields']['stock_uom']} of {item['code']}, but only "
-                                      f"{dstr(remaining_total)} received on {', '.join(sorted({p['receipt'] for p in prs}))} "
-                                      "are not billed yet.", f"lines[{n}].qty", n,
-                                      options=[{"value": dstr(remaining_total), "label": f"Bill the {dstr(remaining_total)} "
-                                                "received"}] if remaining_total > 0 else [],
+                                      f"{stock_uom} of {item['code']}, but only {dstr(remaining_total)} received on "
+                                      f"{', '.join(sorted({p['receipt'] for p in prs}))} are not billed yet.",
+                                      f"lines[{n}].qty", n,
+                                      options=[{"value": dstr(as_written), "label": f"Bill the {dstr(in_uom)} "
+                                                f"{unit['uom']} received"}] if remaining_total > 0 else [],
                                       answer_type="decimal", source=src, rule=f"{INVOICE_POLICY}#I7"))
-            out["receipt"] = {"remaining": dstr(remaining_total), "billed_on_invoice": dstr(got)}
+            out["receipt"] = {"remaining": dstr(remaining_total), "billed_on_invoice": dstr(got), "unit": stock_uom}
             lines_out.append(out)
             continue
         for pr, take in allocation:
-            used[pr["row_id"]] = used.get(pr["row_id"], Decimal(0)) + take
+            used_receipt[pr["row_id"]] = used_receipt.get(pr["row_id"], Decimal(0)) + take
+        used_order[po_row["row_id"]] = used_order.get(po_row["row_id"], Decimal(0)) + sum(t for _, t in allocation)
         line_amount = Decimal(0)
         for pr, take in allocation:
             q = take / unit["conversion_factor"]
-            amount = money(q * money(rate))
+            amount = money(q * rate)
             line_amount += amount
-            payload_lines.append({"item_code": item["code"], "qty": dstr(q), "uom": unit["uom"], "rate": dstr(money(rate)),
+            payload_lines.append({"item_code": item["code"], "qty": dstr(q), "uom": unit["uom"], "rate": dstr(rate),
                                   "purchase_order": po["id"], "po_detail": po_row["row_id"],
                                   "purchase_receipt": pr["receipt"], "pr_detail": pr["row_id"],
-                                  "source_ref": line.source_ref})
+                                  "source_ref": line.source_ref,
+                                  "expected_conversion_factor": dstr(unit["conversion_factor"])})
         stated_amount = to_number(line.amount)
         if stated_amount is not None and money(stated_amount) != line_amount:
             questions.append(Question("amount_mismatch", f"Line {n}: the amount {dstr(stated_amount)} is not "
                                       f"{dstr(unit['qty'])} x {dstr(rate)} = {dstr(line_amount)}.", f"lines[{n}].qty", n,
                                       answer_type="decimal", source=src, rule=f"{INVOICE_POLICY}#I6"))
-        out["rate"] = {"value": dstr(money(rate)), "rule": rate_rule, "record": po["id"]}
+        out["rate"] = {"value": dstr(rate), "rule": rate_rule, "record": po["id"]}
         out["receipt"] = {"rows": [{"receipt": pr["receipt"], "row": pr["row_id"], "qty": dstr(take)} for pr, take in allocation],
-                          "rule": {"id": "I7", "text": "Received and not yet billed (submitted and draft bills count)"}}
+                          "unit": stock_uom,
+                          "rule": {"id": "I7", "text": "Accepted on the receipt, less returns, and not yet billed "
+                                   "(submitted and draft bills count, on the receipt row or the order row)"}}
         out["order"] = {"purchase_order": po["id"], "row": po_row["row_id"], "rate": po_row["rate"]}
         out["amount"] = dstr(line_amount)
         lines_out.append(out)
-    if not extraction.lines:
+    if not [x for x in prepared if x[3] != "removed"]:
         questions.append(Question("no_lines", "No invoice lines were found.", "lines", answer_type="text"))
