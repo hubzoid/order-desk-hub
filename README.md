@@ -88,8 +88,10 @@ There is no automatic posting. A model, a document or a workflow can never appro
 
 | Claim | Evidence |
 |---|---|
-| Twelve sample documents give ten proposals and two questions | Real run on Hubzoid with Docling and the `claude-local` extractor, 2 min 19 s. Deterministic oracle tests. |
-| Drafts, approved submission, denial, stale approvals, crash and lost-answer recovery | Tests on the real Hubzoid workflow engine. |
+| Twelve sample documents give ten proposals and two questions | Real runs on Hubzoid with Docling and the `claude-local` extractor: 2 min 19 s, and 2 min 29 s again after a reset. Deterministic oracle tests. |
+| Duplicates, injected instructions, another company's invoice, a broken attachment | The seven adversarial messages on the real extractor, each with the oracle's outcome. |
+| Drafts, approved submission, denial, asking again, stale approvals, crash and lost-answer recovery | Tests on the real Hubzoid workflow engine. |
+| Reviewed | One Codex review (24 findings, all fixed with tests). |
 | The ERP adapter speaks ERPNext's REST protocol | The same contract suite on the sample backend and on a fake Frappe REST server with injected faults. |
 | Live ERPNext | **Not yet run.** The kit is in [testing/erpnext/](testing/erpnext/README.md). |
 
