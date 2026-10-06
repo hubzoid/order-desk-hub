@@ -547,3 +547,24 @@ def test_a_missing_price_is_answered_by_a_rate(desk, monkeypatch):
     fixed = _correct(desk, out["case_id"], **{"lines[1]__rate": "9.80", "lines[2]__rate": "3.45"})
     assert fixed["state"] == "draft_ready", fixed["questions"]
     assert Decimal(desk.store.proposal(out["case_id"])["evidence"]["totals"]["computed"]) == Decimal("276.6")
+
+
+def test_the_stored_submission_survives_the_approval_card_unchanged(desk):
+    """The chat card's typed document must carry every field the stored
+    submission has, or the bridge refuses a correct approval as stale."""
+    import importlib.util
+
+    from tests.desk_helpers import ROOT
+
+    spec = importlib.util.spec_from_file_location("order_invoice_tools", ROOT / "tools_local" / "order_invoice.py")
+    tools = importlib.util.module_from_spec(spec)
+    import sys
+
+    sys.modules[spec.name] = tools          # as the hub runtime loads it, so annotations resolve
+    spec.loader.exec_module(tools)
+    case = _claimed(desk, triage(desk, "OID-002"))                       # a Box line, factor 10
+    view = desk.erp.writer().create_draft("sales_order", desk.store.proposal(case["id"])["payload"], "op-card-rt")
+    args = desk.submission_arguments(case, view)
+    stored = {k: args.get(k) for k in ("company", "doctype", "erp_name", "erp_version", "party", "reference",
+                                        "currency", "lines", "totals")}
+    assert tools.SubmissionDocument.model_validate(stored).model_dump() == stored

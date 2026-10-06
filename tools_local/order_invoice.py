@@ -110,6 +110,7 @@ class SubmissionLine(BaseModel):
     item_code: str
     qty: str
     uom: str
+    conversion_factor: str | None = None   # stock units in one uom, as ERPNext holds it
     rate: str
     amount: str | None
 
