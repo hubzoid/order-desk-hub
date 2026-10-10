@@ -804,7 +804,8 @@ class Desk:
         case = self.store.update_case(
             case_id, state="erp_draft_saved", erp_doctype=view["doctype"], erp_name=view["name"],
             erp_docstatus=view["docstatus"], erp_modified=view["erp_modified"], approval_digest=view["approval_digest"],
-            content_digest=view["content_digest"], differences_json=diffs or None, event="draft.created", actor=actor,
+            content_digest=view["content_digest"], differences_json=diffs or None, error_code=None, error_message=None,
+            event="draft.created", actor=actor,
             payload={"erp_name": view["name"], "deduplicated": view.get("deduplicated"), "differences": len(diffs)})
         self.store.link(case_id, work_item_id=work_item_id, action="draft", operation_id=operation_id,
                         erp_doctype=view["doctype"], erp_name=view["name"], erp_modified=view["erp_modified"],
@@ -817,6 +818,7 @@ class Desk:
     def record_submitted(self, case_id: str, *, work_item_id: str, operation_id: str | None, view: dict, actor: str):
         case = self.store.update_case(case_id, state="done", erp_docstatus=view["docstatus"],
                                       erp_modified=view["erp_modified"], content_digest=view["content_digest"],
+                                      error_code=None, error_message=None,     # a settled lost answer or denial
                                       event="document.submitted", actor=actor,
                                       payload={"erp_name": view["name"], "docstatus": view["docstatus"]})
         self.store.link(case_id, work_item_id=work_item_id, action="submit", operation_id=operation_id,

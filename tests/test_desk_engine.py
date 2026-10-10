@@ -268,6 +268,7 @@ def test_lost_answer_waits_for_the_requester_then_settles(hub, tmp_path):
                    surface="test")
         done = _wait(desk, case["id"], ("erp_draft_saved", "error"))
         assert done["state"] == "erp_draft_saved" and done["erp_name"] == name
+        assert done["error_code"] is None and done["error_message"] is None     # the lost answer is settled
         assert len(_sales_orders(desk, "HF-7011")) == 1
         assert wi_store.get_op(hub, entry["operation_id"])["state"] == "resolved_done"
     finally:
@@ -294,6 +295,7 @@ def test_denied_then_asked_again_is_a_new_approval(hub, tmp_path):
         wi.approve(hub, op2["id"], OWNER, digest=op2["args_digest"], surface="test")
         done = _wait(desk, case["id"], ("done", "error"))
         assert done["state"] == "done" and done["erp_docstatus"] == 1
+        assert done["error_code"] is None and not done["error_message"]         # the denial is history now
     finally:
         engine.close()
 
