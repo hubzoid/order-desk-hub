@@ -95,14 +95,28 @@ def _brief(view: dict) -> dict:
         "lines": [{"n": l["n"], "source": (l.get("source") or {}).get("text"), "loc": (l.get("source") or {}).get("loc"),
                    "item": (l.get("item") or {}).get("code"), "qty": (l.get("unit") or {}).get("qty"),
                    "uom": (l.get("unit") or {}).get("uom"), "rate": (l.get("rate") or {}).get("value"),
-                   "amount": l.get("amount"),
+                   "amount": l.get("amount"), "removed": bool(l.get("removed")), "added": bool(l.get("added")),
                    "rules": [(l.get(k) or {}).get("rule", {}).get("text") for k in ("item", "unit", "rate") if l.get(k)]}
                   for l in ev.get("lines") or []],
         "questions": view.get("questions"), "warnings": [w["message"] for w in prop.get("warnings") or []],
         "erp": view.get("erp"), "error": view.get("error"), "duplicate_of": view.get("duplicate_of"),
         "actions": view.get("actions"), "write_mode": view.get("write_mode"), "backend": view.get("backend"),
         "synthetic": view.get("synthetic"),
+        # Who changed the proposal and why (a rerun after a rule change, a person's answer), oldest first.
+        "history": [{"revision": h["revision"], "why": h["reason"], "by": h["by"], "at": _iso(h["at"]),
+                     "questions": h["questions"]} for h in view.get("proposals") or []],
+        "recent_events": [{"type": e["type"], "by": e["actor"], "at": _iso(e["at"])}
+                          for e in (view.get("events") or [])[-10:]],
     }
+
+
+def _iso(at) -> str | None:
+    from datetime import datetime, timezone
+
+    try:
+        return datetime.fromtimestamp(float(at), timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except (TypeError, ValueError):
+        return str(at) if at is not None else None
 
 
 class SubmissionLine(BaseModel):

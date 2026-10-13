@@ -568,3 +568,22 @@ def test_the_stored_submission_survives_the_approval_card_unchanged(desk):
     stored = {k: args.get(k) for k in ("company", "doctype", "erp_name", "erp_version", "party", "reference",
                                         "currency", "lines", "totals")}
     assert tools.SubmissionDocument.model_validate(stored).model_dump() == stored
+
+
+def test_the_case_answer_in_chat_carries_its_history(desk):
+    import importlib.util
+    import sys
+
+    from tests.desk_helpers import ROOT
+
+    spec = importlib.util.spec_from_file_location("order_invoice_tools_h", ROOT / "tools_local" / "order_invoice.py")
+    tools = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = tools
+    spec.loader.exec_module(tools)
+    out = triage(desk, "OID-011")
+    _claimed(desk, out)
+    _correct(desk, out["case_id"], **{"lines[1]__item_code": "SYN-ITEM-009"})
+    brief = tools._brief(desk.show(OWNER, out["case_id"]))
+    assert [(h["revision"], h["why"]) for h in brief["history"]] == [(1, "triage"), (2, "correction")]
+    assert brief["history"][1]["by"] == OWNER and brief["history"][1]["at"].endswith("Z")
+    assert any(e["type"] == "case.corrected" for e in brief["recent_events"])
