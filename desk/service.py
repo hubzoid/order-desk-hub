@@ -743,12 +743,17 @@ class Desk:
                             "Use the chat or the Console.", status=403) from None
 
     # -- inside the case work item (the workflow calls these) ----------------------------------------------------
-    def begin(self, case_id: str, *, action: str, requester: str, work_item_id: str, expect: dict) -> dict:
+    def begin(self, case_id: str, *, action: str, requester: str, work_item_id: str, expect: dict,
+              resuming: bool = False) -> dict:
         """Recheck everything at the start of a draft or submit execution: the
         case, its owner, the proposal digest, the requester's authority and the
         hub's write mode. The workflow calls it again right before the ERP
         write (`recheck`), so a crash and recovery in between never write on
-        a check made earlier."""
+        a check made earlier.
+
+        `resuming`: the recheck inside the write. The case may then be
+        `ambiguous` because of this very operation, when its requester chose
+        to send it again."""
         case = self.store.require_case(case_id, self.hub_id)
         mode = self.write_mode()
         if mode == "off" or (action == "submit" and mode != "approve"):
@@ -758,7 +763,7 @@ class Desk:
             raise DeskError("not_owner", f"{case_number(case)} now belongs to {case.get('owner') or 'nobody'}. This "
                             "request was made by someone else and stops.", status=409)
         if action == "draft":
-            if case["state"] != "draft_ready":
+            if case["state"] not in (("draft_ready", "ambiguous") if resuming else ("draft_ready",)):
                 raise DeskError("invalid_state", f"{case_number(case)} is {case['state']}.", status=409)
             if not self.can(requester, "desk_operate"):
                 raise DeskError("permission_denied", "The requester no longer holds desk_operate.", status=403)
@@ -767,7 +772,8 @@ class Desk:
                 raise DeskError("stale_preview", "The proposal changed after this request. Review it again.",
                                 status=409)
             return {"case": case, "proposal": prop}
-        if case["state"] not in ("erp_draft_saved", "waiting_approval", "submitting"):
+        allowed = ("erp_draft_saved", "waiting_approval", "submitting") + (("ambiguous",) if resuming else ())
+        if case["state"] not in allowed:
             raise DeskError("invalid_state", f"{case_number(case)} is {case['state']}.", status=409)
         if not self.can(requester, "desk_submit"):
             raise DeskError("permission_denied", "The requester no longer holds desk_submit.", status=403)
@@ -777,7 +783,7 @@ class Desk:
         """Right before an ERP write: everything `begin` checks, and for a bill,
         that the receipts still leave enough to bill (another bill may have
         taken the same quantity since this proposal was made)."""
-        ctx = self.begin(case_id, action=action, requester=requester, work_item_id="", expect=expect)
+        ctx = self.begin(case_id, action=action, requester=requester, work_item_id="", expect=expect, resuming=True)
         if action == "draft" and ctx["proposal"]["kind"] == "purchase_invoice" and payload:
             case = ctx["case"]
             reads = propose_lib._Reads(self.erp.reader(), self.erp_ctx(case))

@@ -459,19 +459,23 @@ def _uncovered(ctx: Context, reads: _Reads, elements: list[dict], prepared: list
         rec = _exact_item(reads, line.item_code_seen)
         if rec is not None:
             codes.add(rec["id"])
-    order = [e["id"] for e in elements]
-    cited_rows = [order.index(e["id"]) for e in elements if e.get("kind") == "row" and e["id"] in cited]
+    cited_rows = [i for i, e in enumerate(elements) if e.get("kind") == "row" and e["id"] in cited]
+    # Code-like words only (letters and digits, not a date), looked up in batches
+    # of 100, so a long document costs a few reads, not one per word.
+    tokens_of = {e["id"]: {tok for tok in _CODE_TOKEN.findall(e.get("text") or "") if any(ch.isdigit() for ch in tok)
+                           and any(ch.isalpha() for ch in tok) and not _DATE_LIKE.match(tok)} for e in elements}
+    wanted = sorted({form for toks in tokens_of.values() for tok in toks for form in (tok, tok.upper())})
+    known: set[str] = set()
+    for i in range(0, len(wanted), 100):
+        known |= {rec["id"] for rec in reads.all("items", {"ids": tuple(wanted[i:i + 100])})}
     out = []
     for i, e in enumerate(elements):
         eid, text = e["id"], e.get("text") or ""
         if ov.get(f"ack.uncovered.{eid}") == "not_a_line":
             continue
         reasons = []
-        # Code-like words only (letters and digits, not a date), so a page of text costs few reads.
-        tokens = {tok for tok in _CODE_TOKEN.findall(text) if any(ch.isdigit() for ch in tok)
-                  and any(ch.isalpha() for ch in tok) and not _DATE_LIKE.match(tok)}
-        named = sorted({rec["id"] for tok in tokens for rec in [_exact_item(reads, tok)] if rec is not None}
-                       - cited.get(eid, set()))
+        named = sorted({tok if tok in known else tok.upper() for tok in tokens_of[eid]
+                        if tok in known or tok.upper() in known} - cited.get(eid, set()))
         if named:
             reasons.append(f"it names {', '.join(named)}")
         if eid not in cited and _QTY_TIMES.search(text):
@@ -496,7 +500,7 @@ def names_company(company: str, written: str | None) -> bool:
     words = re.findall(r"[a-z0-9]+", norm_text(company))
     if not words:
         return False
-    pattern = r"(?<![a-z0-9])" + r"[\s.,&'-]*".join(map(re.escape, words)) + r"(?!\s*[a-z])"
+    pattern = r"(?<![^\W_])" + r"[\s.,&'-]*".join(map(re.escape, words)) + r"(?!\s*[^\W\d_])"
     return re.search(pattern, norm_text(written or "")) is not None
 
 

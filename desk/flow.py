@@ -87,7 +87,7 @@ def case(hub) -> dict:
             try:
                 desk.recheck(case_row["id"], action="draft", requester=requester, expect=data,
                              payload=arguments["payload"])
-            except DeskError as exc:
+            except (DeskError, ERPError) as exc:      # checked before anything was sent
                 raise NotSent(f"{exc.code}: {exc.message}") from None
             try:
                 return writer.create_draft(arguments["kind"], arguments["payload"], arguments["external_ref"])
@@ -161,7 +161,7 @@ def case(hub) -> dict:
     def dispatch(arguments):
         try:
             desk.recheck(case_row["id"], action="submit", requester=requester, expect=data)
-        except DeskError as exc:
+        except (DeskError, ERPError) as exc:          # checked before anything was sent
             raise NotSent(f"{exc.code}: {exc.message}") from None
         desk.record_state(case_row["id"], "submitting", actor=requester, event="document.submitting")
         try:

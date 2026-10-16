@@ -587,3 +587,26 @@ def test_the_case_answer_in_chat_carries_its_history(desk):
     assert [(h["revision"], h["why"]) for h in brief["history"]] == [(1, "triage"), (2, "correction")]
     assert brief["history"][1]["by"] == OWNER and brief["history"][1]["at"].endswith("Z")
     assert any(e["type"] == "case.corrected" for e in brief["recent_events"])
+
+
+# -- the final self-review ------------------------------------------------------------------------
+
+def test_the_company_name_may_not_run_on_into_any_word():
+    from desk.propose import names_company
+
+    company = "Synthetic Meridian Distribution"
+    assert names_company(company, "Bill to: Synthetic Meridian Distribution, 1 Harbor Road")
+    assert names_company(company, "SYNTHETIC MERIDIAN DISTRIBUTION (synthetic sample)")
+    assert not names_company(company, "Synthetic Meridian Distribution Östra")
+    assert not names_company(company, "Synthetic Meridian Distribution Overseas")
+    assert not names_company(company, "Nordsynthetic Meridian Distribution")
+
+
+def test_the_recheck_lets_a_requester_send_an_uncertain_draft_again(desk):
+    case = _claimed(desk, triage(desk, "OID-001"))
+    expect, prop = _expect(desk, case)
+    desk.store.update_case(case["id"], state="ambiguous", error_code="erp_write_ambiguous")
+    desk.recheck(case["id"], action="draft", requester=OWNER, expect=expect, payload=prop["payload"])
+    with pytest.raises(DeskError) as err:          # a new request still needs a clean case
+        desk.begin(case["id"], action="draft", requester=OWNER, work_item_id="", expect=expect)
+    assert err.value.code == "invalid_state"

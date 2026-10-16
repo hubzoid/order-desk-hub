@@ -8,7 +8,7 @@ Start on the sample. Connect a real site only after the desk does what you want 
 
 | User | Rights | Used for |
 |---|---|---|
-| read | Read on Customer, Supplier, Item, Item Price, Bin, Sales Order, Purchase Order, Purchase Receipt, Sales Invoice, Purchase Invoice, Company, Warehouse, Price List. Print on Sales Invoice. Read on Custom Field, Server Script, Webhook, Notification, Workflow, Assignment Rule and Auto Repeat (so doctor can check them) | All reads (`credential_ref` when writes are off) |
+| read | Read on Customer, Supplier, Item, Item Price, Bin, Sales Order, Purchase Order, Purchase Receipt, Sales Invoice, Purchase Invoice, Company, Warehouse, Price List. Print on Sales Invoice. Read on Custom Field, Server Script, Webhook, Notification, Workflow, Assignment Rule and Auto Repeat (doctor checks them, and the desk proves the marker field is unique before its first write) | All reads (`credential_ref` when writes are off) |
 | draft | A custom role with read, write and create on Sales Order and Purchase Invoice, and **no submit, cancel, amend or delete**. Read on every linked master | Draft writes (`credential_ref` when writes are on) |
 | submit | Submit (and write) on Sales Order and Purchase Invoice | Approved submission only (`submit_credential_ref`) |
 

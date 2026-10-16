@@ -332,6 +332,30 @@ def _wait_item_done(hub, item_id, timeout=60):
     raise AssertionError("the work item did not finish")
 
 
+def test_an_uncertain_draft_sent_again_by_its_requester_makes_one_document(hub, tmp_path):
+    from hubzoid.work_items import service as wi
+    from hubzoid.work_items import store as wi_store
+
+    engine = Engine(hub, tmp_path)
+    try:
+        desk = _desk(hub)
+        case = _ready_case(desk, "OID-003")
+        (hub / ".hubzoid" / "data" / "erp" / "sample-faults.json").write_text(
+            json.dumps([["insert", "lose_before_commit"]]))
+        _, settled = _draft(desk, case)
+        assert settled["state"] == "ambiguous"
+        entry = next(o for o in desk.reconcile(OWNER, case["id"])["operations"] if o["state"] == "ambiguous")
+        assert entry["verdict"] == "none_found"
+        wi.resolve(hub, entry["operation_id"], OWNER, decision="retry", evidence="nothing carries the marker",
+                   acknowledge_duplicate_risk=True, surface="test")
+        done = _wait(desk, case["id"], ("erp_draft_saved", "error", "draft_ready"))
+        assert done["state"] == "erp_draft_saved" and done["error_code"] is None, done
+        assert len(_sales_orders(desk, "PC-0050")) == 1
+        assert wi_store.get_op(hub, entry["operation_id"])["state"] == "succeeded"
+    finally:
+        engine.close()
+
+
 def test_write_modes_gate_the_actions(hub, tmp_path):
     from desk.service import DeskError
 
