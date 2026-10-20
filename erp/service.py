@@ -53,7 +53,11 @@ class ERPService:
         hub_dir = Path(hub_dir)
         from hubzoid.datadir import state
 
-        return cls(hub_dir, state(hub_dir) / "data" / "erp", **kw)
+        target = state(hub_dir) / "data" / "erp"
+        legacy = hub_dir / ".hubzoid" / "data" / "erp"
+        if target.resolve() != legacy.resolve() and legacy.exists():
+            raise ERPError("data_root_migration_required", "Legacy ERP state exists under .hubzoid/data/erp. Stop workers and move the existing state, including deployment-id and operation receipts, to the configured data root after reviewed backup. Do not generate a new deployment identity.", status=409)
+        return cls(hub_dir, target, **kw)
 
     def _datasets_root(self) -> Path:
         installed = self.hub_dir / "raw_data" / "synthetic"
