@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.12.6"        # the committed sample dataset was generated with 3.12.6; email header folding changed in later 3.12 patches
       - name: Install the pinned SDK and the desk
         run: |
           python -m pip install -r requirements-sdk.txt
