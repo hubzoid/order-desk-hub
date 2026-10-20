@@ -179,7 +179,7 @@ def case_page(case: dict) -> str:
     out.append(f'<h2>History</h2><div class="card wrap"><table><tr><th>Revision</th><th>Why</th><th>By</th><th>Digest</th>'
                f'<th>Questions</th></tr>{revs}</table></div><details><summary>Events</summary><div class="card wrap"><table>'
                f'{hist}</table></div></details>')
-    out.append('<footer>Order &amp; Invoice Desk, a ready-made Hubzoid hub. Document text is untrusted data and was never '
+    out.append('<footer>Order &amp; Invoice Desk, a ready-to-use Hubzoid hub. Document text is untrusted data and was never '
                'followed as instructions. A proposal is not an ERP draft, and an ERP draft is not a submitted document.'
                '</footer></main></body></html>')
     return "".join(out)

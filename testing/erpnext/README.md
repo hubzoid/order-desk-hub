@@ -12,7 +12,7 @@ docker compose -p hubzoid-erpnext-test -f testing/erpnext/compose.yaml exec -T b
   bash -c 'cd /home/frappe/frappe-bench/sites && ../env/bin/python - hubzoid-test.localhost' < testing/erpnext/seed.py
 ```
 
-The seed creates three users with API keys in `/tmp/hubzoid-erpnext-keys.json` inside the container. Load each into the hub's secret store without printing it, for example `jq -r '."hubzoid-read@synthetic-meridian.example"' | hubzoid secrets set . --ref secret:hub/<hub>/erpnext-read --stdin --apply`. Then the custom field, with the administrator's key (created in the ERPNext UI for the test site):
+The seed creates three users with API keys in `/tmp/hubzoid-erpnext-keys.json` inside the container. Load each into the hub's secret store without printing it, for example `jq -r '."hubzoid-read@synthetic-meridian.example"' | hubzoid secrets set . --ref secret:hub/<hub>/erpnext-read --stdin`. Then the custom field, with the administrator's key (created in the ERPNext UI for the test site):
 
 ```bash
 hubzoid-erp configure . --file connectors/erpnext.live-test.yaml --expected-revision N

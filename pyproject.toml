@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "order-invoice-desk-hub"
 version = "0.1.0"
-description = "Order & Invoice Desk: a ready-made Hubzoid hub. Inbox to ERP drafts, with a person approving every submission."
+description = "Order & Invoice Desk: a ready-to-use Hubzoid hub. Orders and invoices from your inbox, organized and sourced, with optional ERPNext drafts and approved submission."
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
