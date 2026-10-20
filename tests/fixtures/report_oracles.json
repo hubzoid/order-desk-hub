@@ -1,0 +1,408 @@
+{
+  "oracle_version": 1,
+  "provenance": {
+    "author": "Primary reviewer, independent of reporting implementation agent",
+    "method": "Expected values hand-derived from stated source amounts and proposal rules before implementation. The report implementation must not generate or update this oracle.",
+    "arithmetic": [
+      "O1 net = 2*12.50 + 3*4.00 = 37.00; plus stated tax3.70 =40.70",
+      "USD invoices = I1 33 + I3 revision2 22 + START1 7 =62; net30+20+7=57; tax3+2+0=5",
+      "EUR invoice I2 stated inclusive gross24 minus stated tax4 gives net20",
+      "Converted O1 quantity =2carton *12 =24Nos; original2carton remainsunchanged",
+      "48hours=172800seconds;24hours=86400seconds"
+    ]
+  },
+  "filters": {
+    "start": "2026-10-01",
+    "end_exclusive": "2026-11-01",
+    "timezone": "UTC",
+    "generated_at": "2026-10-20T12:00:00Z"
+  },
+  "records": [
+    {
+      "record_id": "O1",
+      "revision": 1,
+      "document_kind": "order",
+      "currency": "USD",
+      "document_date": "2026-10-02",
+      "party": "=Alpha",
+      "lines": [
+        {
+          "quantity": "2",
+          "unit": "carton",
+          "unit_price": "12.50"
+        },
+        {
+          "quantity": "3",
+          "unit": "kg",
+          "unit_price": "4.00"
+        }
+      ],
+      "stated_total": "40.70",
+      "stated_tax": "3.70",
+      "tax_basis": "exclusive",
+      "status": "accepted",
+      "approved_conversions": [
+        {
+          "line": 0,
+          "from": "carton",
+          "to": "Nos",
+          "factor": "12"
+        }
+      ]
+    },
+    {
+      "record_id": "O2",
+      "revision": 1,
+      "document_kind": "order",
+      "currency": "EUR",
+      "document_date": "2026-10-03",
+      "party": "Beta",
+      "lines": [
+        {
+          "quantity": "5",
+          "unit": "pcs",
+          "unit_price": "8.00"
+        }
+      ],
+      "stated_total": "40.00",
+      "stated_tax": "0.00",
+      "tax_basis": "exclusive",
+      "status": "accepted"
+    },
+    {
+      "record_id": "I1",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": "USD",
+      "document_date": "2026-10-04",
+      "party": "Supplier1",
+      "lines": [
+        {
+          "quantity": "3",
+          "unit": "pcs",
+          "unit_price": "10.00"
+        }
+      ],
+      "stated_total": "33.00",
+      "stated_tax": "3.00",
+      "tax_basis": "exclusive",
+      "status": "accepted"
+    },
+    {
+      "record_id": "I2",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": "EUR",
+      "document_date": "2026-10-05",
+      "party": "Supplier2",
+      "lines": [
+        {
+          "quantity": "2",
+          "unit": "pcs",
+          "unit_price": "12.00"
+        }
+      ],
+      "stated_total": "24.00",
+      "stated_tax": "4.00",
+      "tax_basis": "inclusive",
+      "status": "accepted",
+      "stated_net": "20.00"
+    },
+    {
+      "record_id": "I3",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": "USD",
+      "document_date": "2026-10-06",
+      "party": "Supplier3",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit": "pcs",
+          "unit_price": "10.00"
+        }
+      ],
+      "stated_total": "11.00",
+      "stated_tax": "1.00",
+      "tax_basis": "exclusive",
+      "status": "superseded"
+    },
+    {
+      "record_id": "I3",
+      "revision": 2,
+      "document_kind": "invoice",
+      "currency": "USD",
+      "document_date": "2026-10-06",
+      "party": "Supplier3",
+      "lines": [
+        {
+          "quantity": "2",
+          "unit": "pcs",
+          "unit_price": "10.00"
+        }
+      ],
+      "stated_total": "22.00",
+      "stated_tax": "2.00",
+      "tax_basis": "exclusive",
+      "status": "accepted"
+    },
+    {
+      "record_id": "DUP1",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": "USD",
+      "document_date": "2026-10-04",
+      "party": "Supplier1",
+      "lines": [
+        {
+          "quantity": "3",
+          "unit": "pcs",
+          "unit_price": "10.00"
+        }
+      ],
+      "stated_total": "33.00",
+      "stated_tax": "3.00",
+      "tax_basis": "exclusive",
+      "status": "exception",
+      "reason": "duplicate_candidate",
+      "duplicate_of": "I1",
+      "exception_created_at": "2026-10-18T12:00:00Z"
+    },
+    {
+      "record_id": "BAD1",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": "USD",
+      "document_date": "2026-10-07",
+      "party": "Supplier4",
+      "lines": [
+        {
+          "quantity": "2",
+          "unit": "pcs",
+          "unit_price": "10.00"
+        }
+      ],
+      "stated_total": "23.00",
+      "stated_tax": "2.00",
+      "tax_basis": "exclusive",
+      "status": "exception",
+      "reason": "total_mismatch",
+      "exception_created_at": "2026-10-18T12:00:00Z"
+    },
+    {
+      "record_id": "UNKNOWN1",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": null,
+      "document_date": null,
+      "party": "Unknown",
+      "lines": [],
+      "stated_total": null,
+      "stated_tax": null,
+      "tax_basis": "exclusive",
+      "status": "exception",
+      "reason": "missing_fields",
+      "exception_created_at": "2026-10-19T12:00:00Z"
+    },
+    {
+      "record_id": "CREDIT1",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": "USD",
+      "document_date": "2026-10-09",
+      "party": "Supplier5",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit": "pcs",
+          "unit_price": "-5.00"
+        }
+      ],
+      "stated_total": "-5.00",
+      "stated_tax": "0.00",
+      "tax_basis": "exclusive",
+      "status": "exception",
+      "reason": "unsupported_credit",
+      "exception_created_at": "2026-10-18T12:00:00Z"
+    },
+    {
+      "record_id": "ROUND1",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": "USD",
+      "document_date": "2026-10-08",
+      "party": "Supplier6",
+      "lines": [
+        {
+          "quantity": "3",
+          "unit": "pcs",
+          "unit_price": "0.333"
+        }
+      ],
+      "stated_total": "1.00",
+      "stated_tax": "0.00",
+      "tax_basis": "exclusive",
+      "status": "exception",
+      "reason": "unsupported_rounding",
+      "exception_created_at": "2026-10-18T12:00:00Z"
+    },
+    {
+      "record_id": "BEFORE1",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": "USD",
+      "document_date": "2026-09-30",
+      "party": "Supplier7",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit": "pcs",
+          "unit_price": "100.00"
+        }
+      ],
+      "stated_total": "100.00",
+      "stated_tax": "0.00",
+      "tax_basis": "exclusive",
+      "status": "accepted"
+    },
+    {
+      "record_id": "END1",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": "USD",
+      "document_date": "2026-11-01",
+      "party": "Supplier7",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit": "pcs",
+          "unit_price": "200.00"
+        }
+      ],
+      "stated_total": "200.00",
+      "stated_tax": "0.00",
+      "tax_basis": "exclusive",
+      "status": "accepted"
+    },
+    {
+      "record_id": "START1",
+      "revision": 1,
+      "document_kind": "invoice",
+      "currency": "USD",
+      "document_date": "2026-10-01",
+      "party": "Supplier7",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit": "pcs",
+          "unit_price": "7.00"
+        }
+      ],
+      "stated_total": "7.00",
+      "stated_tax": "0.00",
+      "tax_basis": "exclusive",
+      "status": "accepted"
+    }
+  ],
+  "expected": {
+    "accepted_order_revisions": [
+      "O1:1",
+      "O2:1"
+    ],
+    "accepted_invoice_revisions": [
+      "I1:1",
+      "I2:1",
+      "I3:2",
+      "START1:1"
+    ],
+    "order_totals_by_currency": {
+      "USD": {
+        "count": 1,
+        "net": "37.00",
+        "tax": "3.70",
+        "total": "40.70",
+        "quantities": {
+          "carton": "2",
+          "kg": "3"
+        }
+      },
+      "EUR": {
+        "count": 1,
+        "net": "40.00",
+        "tax": "0.00",
+        "total": "40.00",
+        "quantities": {
+          "pcs": "5"
+        }
+      }
+    },
+    "converted_quantities": [
+      {
+        "record_id": "O1",
+        "revision": 1,
+        "line": 0,
+        "quantity": "24",
+        "unit": "Nos"
+      }
+    ],
+    "invoice_totals_by_currency": {
+      "USD": {
+        "count": 3,
+        "net": "57.00",
+        "tax": "5.00",
+        "total": "62.00"
+      },
+      "EUR": {
+        "count": 1,
+        "net": "20.00",
+        "tax": "4.00",
+        "total": "24.00"
+      }
+    },
+    "exception_ages_seconds": {
+      "DUP1": 172800,
+      "BAD1": 172800,
+      "UNKNOWN1": 86400,
+      "CREDIT1": 172800,
+      "ROUND1": 172800
+    },
+    "undated_exception_ids": [
+      "UNKNOWN1"
+    ],
+    "unfiltered_register_latest_ids": [
+      "O1",
+      "O2",
+      "I1",
+      "I2",
+      "I3",
+      "DUP1",
+      "BAD1",
+      "UNKNOWN1",
+      "CREDIT1",
+      "ROUND1",
+      "BEFORE1",
+      "END1",
+      "START1"
+    ],
+    "spreadsheet_safe_party": {
+      "O1": "'=Alpha"
+    },
+    "excluded_from_accepted_totals": [
+      "DUP1",
+      "BAD1",
+      "UNKNOWN1",
+      "CREDIT1",
+      "ROUND1",
+      "BEFORE1",
+      "END1"
+    ],
+    "timestamp_boundary": {
+      "timestamp": "2026-09-30T19:00:00Z",
+      "Asia/Kolkata_local": "2026-10-01T00:30:00+05:30",
+      "in_october_Asia/Kolkata": true,
+      "in_october_UTC": false,
+      "source_date_only": "2026-09-30",
+      "source_date_only_in_october": false
+    }
+  }
+}
