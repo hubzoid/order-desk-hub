@@ -25,7 +25,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from erp import digest as erp_digest
-from erp.errors import ERPError, NotDispatched
+from erp.errors import ERPError, NotDispatched, Refused, WriteUncertain
 from erp.models import ERPContext
 from erp.service import ERPService
 
@@ -42,6 +42,8 @@ log = logging.getLogger("hubzoid.desk")
 
 INTAKE_WORKFLOW = "order_invoice_intake"
 CASE_WORKFLOW = "order_invoice_case"
+DRAFT_NOT_SENT_CODES = frozenset({"erp_writes_disabled", "company_denied", "invalid_payload", "duplicate_found",
+                                "operation_conflict", "erp_validation_failed", "write_not_allowed"})
 PERMISSIONS = ("desk_view", "desk_operate", "desk_submit", "desk_manage")
 SETTING_DEFAULTS = {
     "DESK_SOURCES": ["upload", "email", "whatsapp"], "DESK_INTAKE_ENABLED": True,
@@ -1040,41 +1042,50 @@ class Desk:
         existing recovery path. Other ERP clients still need ERP-side guards.
         """
         from .store import dumps
-        writer = writer or self.erp.writer()
         invoice = arguments["kind"] == "purchase_invoice"
         key = self._invoice_fence_key() if invoice else None
         fence = None
         newly_claimed = False
-        with self.store.tx() as conn:
-            if invoice:
-                fence = {"case_id": case_id, "proposal_revision": expect["proposal_revision"],
-                         "external_ref": arguments["external_ref"], "payload_digest": erp_digest.sha(arguments["payload"]),
-                         "marker": writer.marker(arguments["external_ref"]), "company": self.erp.config().company}
-                held = conn.execute("SELECT value FROM desk_meta WHERE key=?", (key,)).fetchone()
-                previous = json.loads(held[0]) if held else None
-                if previous and any(previous.get(k) != v for k, v in fence.items()):
-                    raise DeskError("receipt_capacity_uncertain", "An earlier invoice write for this ERP site/company "
-                                    "still holds receipt capacity. Its owner or an administrator must reconcile "
-                                    "the original operation before another invoice can be drafted.", status=409)
-            self.recheck(case_id, action="draft", requester=requester, expect=expect, payload=arguments["payload"])
-            if invoice and not held:
-                fence["work_item_id"] = work_item_id
-                conn.execute("INSERT INTO desk_meta(key,value) VALUES(?,?)", (key, dumps(fence)))
-                newly_claimed = True
-            elif invoice:
-                fence = previous
-        # The claim is durable before HTTP. A later writer cannot race through
-        # a rolled-back network transaction or a not-yet-synced case state.
+        existing_exact = False
         try:
+            with self.store.tx() as conn:
+                if invoice:
+                    fence = {"case_id": case_id, "proposal_revision": expect["proposal_revision"],
+                             "external_ref": arguments["external_ref"], "payload_digest": erp_digest.sha(arguments["payload"]),
+                             "company": self.erp.config().company}
+                    held = conn.execute("SELECT value FROM desk_meta WHERE key=?", (key,)).fetchone()
+                    previous = json.loads(held[0]) if held else None
+                    if previous and any(previous.get(k) != v for k, v in fence.items()):
+                        raise DeskError("receipt_capacity_uncertain", "An earlier invoice write for this ERP site/company "
+                                        "still holds receipt capacity. Reconcile the original operation before another invoice is drafted.", status=409)
+                    existing_exact = bool(previous)
+                # On an exact existing reservation, even a failed writer setup
+                # or recheck cannot prove the earlier send was never applied.
+                writer = writer or self.erp.writer()
+                if invoice:
+                    fence["marker"] = writer.marker(arguments["external_ref"])
+                    if previous and previous.get("marker") != fence["marker"]:
+                        raise DeskError("receipt_capacity_uncertain", "The deployment identity differs from the held invoice operation. Restore its original identity before recovery.", status=409)
+                self.recheck(case_id, action="draft", requester=requester, expect=expect, payload=arguments["payload"])
+                if invoice and not held:
+                    fence["work_item_id"] = work_item_id
+                    conn.execute("INSERT INTO desk_meta(key,value) VALUES(?,?)", (key, dumps(fence)))
+                    newly_claimed = True
+                elif invoice:
+                    fence = previous
+            # Commit the claim before HTTP. Opaque exceptions/process loss
+            # retain it until exact named readback and durable record_draft.
             return writer.create_draft(arguments["kind"], arguments["payload"], arguments["external_ref"])
-        except NotDispatched:
-            # A failed retry cannot erase an earlier uncertain attempt. Only a
-            # fresh claim with a definitive never-sent result can be released.
-            if invoice and newly_claimed:
+        except (DeskError, ERPError) as exc:
+            if existing_exact:
+                # Never downgrade a prior unknown send to failed_before_send.
+                # This preserves the SDK's resolve-done path for a late insert.
+                raise WriteUncertain("An earlier send of this exact invoice remains uncertain; this retry did not establish its outcome. "
+                                     f"Current check: {exc.code}: {exc.message}") from None
+            definitive = isinstance(exc, (DeskError, NotDispatched, Refused)) or exc.code in DRAFT_NOT_SENT_CODES
+            if invoice and newly_claimed and definitive:
                 self._release_invoice_fence(key, fence)
             raise
-        # All other outcomes (including process loss and BaseException) retain
-        # the claim until exact named readback and durable record_draft below.
 
     def _recorded_invoice_fence(self, case_id: str, view: dict) -> None:
         key = self._invoice_fence_key()
@@ -1207,6 +1218,7 @@ class Desk:
         """Read the ERP for the operation's marker and show the evidence. It
         never writes. The person who asked for the work then decides with the
         SDK's resolve (done with this evidence, retry or abandon)."""
+        self.require(actor, "desk_view", "Reconciling ERP evidence")
         case = self._case_for(actor, case_id)
         self._require_erp()
         if case.get("owner") != actor:

@@ -28,7 +28,7 @@ from decimal import Decimal
 
 from erp.errors import ERPError, NotDispatched, Refused, WriteUncertain
 
-from .service import Desk, DeskError
+from .service import Desk, DeskError, DRAFT_NOT_SENT_CODES
 
 RETRY_CLARIFICATION = ("Return one JSON object that matches the schema exactly: every key present, null where the "
                        "document does not say, numbers as plain decimal strings, and each source_ref an element id "
@@ -81,16 +81,10 @@ def case(hub) -> dict:
         case_row, prop = ctx["case"], ctx["proposal"]
         kind = prop["kind"]
         ref = desk.external_ref(case_row["id"], prop["revision"])
-        writer = desk.erp.writer()
 
         def dispatch(arguments):
             try:
-                desk.recheck(case_row["id"], action="draft", requester=requester, expect=data,
-                             payload=arguments["payload"])
-            except (DeskError, ERPError) as exc:      # checked before anything was sent
-                raise NotSent(f"{exc.code}: {exc.message}") from None
-            try:
-                return desk.dispatch_draft(case_row["id"], requester=requester, expect=data, arguments=arguments, writer=writer, work_item_id=item.id)
+                return desk.dispatch_draft(case_row["id"], requester=requester, expect=data, arguments=arguments, work_item_id=item.id)
             except DeskError as exc:
                 raise NotSent(f"{exc.code}: {exc.message}") from None
             except NotDispatched as exc:
@@ -100,12 +94,12 @@ def case(hub) -> dict:
             except WriteUncertain:
                 raise
             except ERPError as exc:
-                if exc.code in ("erp_writes_disabled", "company_denied", "invalid_payload", "duplicate_found",
-                                "operation_conflict", "erp_validation_failed", "write_not_allowed"):
+                if exc.code in DRAFT_NOT_SENT_CODES:
                     raise NotSent(f"{exc.code}: {exc.message}") from None
                 raise
 
         def reconcile(arguments):
+            writer = desk.erp.writer()
             found = writer.recover(arguments["kind"], arguments["payload"], arguments["external_ref"])
             if found["status"] == "applied":
                 return Reconciled(APPLIED, result=_jsonable(found["view"]),
@@ -136,7 +130,7 @@ def case(hub) -> dict:
         if not (view or {}).get("name"):
             # A person resolved an uncertain create as done: the ERP itself says which
             # draft it was, checked like a fresh one (a difference stays for review).
-            found = writer.recover(kind, prop["payload"], ref)
+            found = desk.erp.writer().recover(kind, prop["payload"], ref)
             if found["view"] is None:
                 raise DeskError("reconcile_needed", f"The ERP shows {len(found['names'])} drafts for this operation. "
                                 "Reconcile the case before going on.", status=409)

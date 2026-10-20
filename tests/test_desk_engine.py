@@ -377,3 +377,52 @@ def test_write_modes_gate_the_actions(hub, tmp_path):
     (hub / "work-items.yaml").write_text("version: 1\nwrite_modes:\n  erp.submit: draft\n")
     assert "create_draft" in desk.actions(OWNER, desk.store.get_case(case["id"]))
     assert "request_submit" not in desk.actions(OWNER, dict(desk.store.get_case(case["id"]), state="erp_draft_saved"))
+
+
+@pytest.mark.slow
+def test_uncertain_invoice_retry_after_policy_change_can_still_resolve_late_insert(hub, tmp_path):
+    """Real SDK state/resolve and workflow replay; only ERP is synthetic."""
+    from hubzoid.work_items import service as wi
+    from hubzoid.work_items import store as wi_store
+
+    engine = Engine(hub, tmp_path)
+    try:
+        desk = _desk(hub)
+        case = _ready_case(desk, "OID-009")
+        prop = desk.store.proposal(case["id"])
+        ref = desk.external_ref(case["id"], prop["revision"])
+        (hub / ".hubzoid/data/erp/sample-faults.json").write_text(json.dumps([["insert", "lose_before_commit"]]))
+        _, settled = _draft(desk, case)
+        assert settled["state"] == "ambiguous"
+        entry = next(o for o in desk.reconcile(OWNER, case["id"])["operations"] if o["state"] == "ambiguous")
+        assert entry["verdict"] == "none_found"
+        op_id = entry["operation_id"]
+        initial = wi_store.get_op(hub, op_id)
+        fence = desk.store.meta(desk._invoice_fence_key())
+        assert fence and len(initial["attempts_json"]) == 1
+        policy = hub / "knowledge/invoice-policy.md"
+        policy.write_text(policy.read_text() + "\nOwner reviewed a new policy revision.\n")
+        wi.resolve(hub, op_id, OWNER, decision="retry", evidence="No marker found yet; retry acknowledged",
+                   acknowledge_duplicate_risk=True, surface="test")
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            op = wi_store.get_op(hub, op_id)
+            if len(op.get("attempts_json") or []) >= 2 and op["state"] != "sending":
+                break
+            time.sleep(0.2)
+        assert op["state"] == "ambiguous", op
+        assert len(op["attempts_json"]) == 2 and "rules_changed" in op["error"]
+        assert desk.store.meta(desk._invoice_fence_key()) == fence
+        assert desk.store.get_case(case["id"])["error_code"] != "draft_not_saved"
+        # Simulate the original request committing after its retry was blocked.
+        late = desk.erp.writer().create_draft(prop["kind"], prop["payload"], ref)
+        proof = desk.reconcile(OWNER, case["id"])
+        assert next(o for o in proof["operations"] if o["operation_id"] == op_id)["verdict"] == "one_document"
+        wi.resolve(hub, op_id, OWNER, decision="done", evidence=f"ERP {late['name']} carries original marker",
+                   surface="test")
+        done = _wait(desk, case["id"], ("erp_draft_saved", "error"))
+        assert done["state"] == "erp_draft_saved" and done["erp_name"] == late["name"]
+        assert wi_store.get_op(hub, op_id)["state"] == "resolved_done"
+        assert desk.store.meta(desk._invoice_fence_key()) is None
+    finally:
+        engine.close()

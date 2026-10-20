@@ -79,7 +79,7 @@ def test_capacity_claim_releases_only_a_new_definitively_unsent_attempt(tmp_path
     assert d.store.meta(d._invoice_fence_key()) is None
     with pytest.raises(WriteUncertain):
         d.dispatch_draft(a["id"], writer=SimpleNamespace(marker=actual.marker, create_draft=unknown), **aa)
-    with pytest.raises(NotDispatched):
+    with pytest.raises(WriteUncertain):
         d.dispatch_draft(a["id"], writer=SimpleNamespace(marker=actual.marker, create_draft=unsent), **aa)
     assert d.store.meta(d._invoice_fence_key())
     d.cancel(OWNER, a["id"], expected_revision=a["revision"], reason="stop")
@@ -345,3 +345,55 @@ def test_json_decimal_corrections_work_through_tool_and_cli(tmp_path, monkeypatc
     assert json.loads(output.output)["status"] == "accepted"
     invalid = invoke(tools.desk_propose_record_rules, {"rules_json": "{bad", "reason": "Invalid input"})
     assert invalid["error"]["code"] == "invalid_json"
+
+
+@pytest.mark.parametrize("error", [
+    pytest.param("refused", id="definitive-erp-refusal"),
+    pytest.param("invalid_payload", id="pre-send-invalid-payload"),
+])
+def test_definitive_fresh_refusal_releases_but_prior_unknown_stays_ambiguous(tmp_path, error):
+    from erp.errors import Refused
+    d, a, _ = invoice_pair(tmp_path)
+    actual = d.erp.writer()
+    aa = draft_args(d, a)
+    def refused(*args):
+        if error == "refused":
+            raise Refused("erp_rejected", "ERP definitively saved nothing")
+        raise ERPError("invalid_payload", "Invalid before send")
+    def unknown(*args):
+        raise WriteUncertain()
+    with pytest.raises(ERPError):
+        d.dispatch_draft(a["id"], writer=SimpleNamespace(marker=actual.marker, create_draft=refused), **aa)
+    assert d.store.meta(d._invoice_fence_key()) is None
+    with pytest.raises(WriteUncertain):
+        d.dispatch_draft(a["id"], writer=SimpleNamespace(marker=actual.marker, create_draft=unknown), **aa)
+    with pytest.raises(WriteUncertain):
+        d.dispatch_draft(a["id"], writer=SimpleNamespace(marker=actual.marker, create_draft=refused), **aa)
+    assert d.store.meta(d._invoice_fence_key())
+
+
+def test_revoked_owner_cannot_read_reconciliation_evidence(tmp_path):
+    d = make_desk(make_hub(tmp_path))
+    case = _claimed(d, triage(d, "OID-001"))
+    # Legacy ERP cases may have no source_scope. Ownership is not an access grant.
+    d._grants = lambda actor, permission: False
+    with pytest.raises(DeskError) as denied:
+        d.reconcile(OWNER, case["id"])
+    assert denied.value.code == "permission_denied"
+
+
+def test_changed_deployment_marker_cannot_downgrade_original_unknown(tmp_path):
+    d, a, _ = invoice_pair(tmp_path)
+    actual = d.erp.writer()
+    args = draft_args(d, a)
+    def uncertain(*args):
+        raise WriteUncertain()
+    with pytest.raises(WriteUncertain):
+        d.dispatch_draft(a["id"], writer=SimpleNamespace(marker=actual.marker, create_draft=uncertain), **args)
+    before = d.store.meta(d._invoice_fence_key())
+    def must_not_send(*args):
+        raise AssertionError("identity mismatch must stop before send")
+    with pytest.raises(WriteUncertain, match="Restore its original identity"):
+        d.dispatch_draft(a["id"], writer=SimpleNamespace(marker=lambda ref: "changed-deployment-marker",
+                                                       create_draft=must_not_send), **args)
+    assert d.store.meta(d._invoice_fence_key()) == before
