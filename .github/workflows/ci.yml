@@ -9,7 +9,8 @@ permissions:
 jobs:
   tests:
     name: tests
-    runs-on: ubuntu-latest
+    # macOS: the committed sample images were rendered there, and the reproducibility test compares bytes.
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
