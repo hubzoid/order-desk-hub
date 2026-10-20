@@ -20,9 +20,9 @@ from pathlib import Path
 from .paths import data_dir
 
 STATES = ("received", "needs_owner", "needs_clarification", "draft_ready", "erp_draft_saved", "waiting_approval",
-          "submitting", "done", "duplicate", "rejected", "cancelled", "error", "ambiguous")
+          "submitting", "needs_review", "done", "duplicate", "rejected", "cancelled", "error", "ambiguous")
 OPEN = ("received", "needs_owner", "needs_clarification", "draft_ready", "erp_draft_saved", "waiting_approval",
-        "submitting", "error", "ambiguous")
+        "submitting", "needs_review", "error", "ambiguous")
 _JSON = ("question_json", "differences_json", "sender_json", "flags_json")
 
 SCHEMA = """
@@ -63,6 +63,9 @@ CREATE TABLE IF NOT EXISTS desk_events (
   id TEXT PRIMARY KEY, case_id TEXT, revision INTEGER, type TEXT NOT NULL, actor TEXT, payload_json TEXT,
   at REAL NOT NULL);
 CREATE INDEX IF NOT EXISTS desk_events_case ON desk_events (case_id, at);
+CREATE TABLE IF NOT EXISTS desk_records (
+  case_id TEXT NOT NULL, revision INTEGER NOT NULL, record_json TEXT NOT NULL,
+  created_by TEXT NOT NULL, created_at REAL NOT NULL, PRIMARY KEY(case_id, revision));
 CREATE TABLE IF NOT EXISTS desk_meta (key TEXT PRIMARY KEY, value TEXT);
 """
 
@@ -228,6 +231,11 @@ class Store:
         with self.read() as c:
             rows = c.execute(f"SELECT * FROM desk_cases WHERE {' AND '.join(where)} ORDER BY number DESC LIMIT ?",
                              params).fetchall()
+        return [self._case(r) for r in rows]
+
+    def all_cases(self, hub_id: str) -> list[dict]:
+        with self.read() as c:
+            rows = c.execute("SELECT * FROM desk_cases WHERE hub_id=? AND preview=0 ORDER BY number DESC", (hub_id,)).fetchall()
         return [self._case(r) for r in rows]
 
     def counts(self, hub_id: str) -> dict:
@@ -400,6 +408,44 @@ class Store:
         with self.read() as c:
             rows = c.execute("SELECT * FROM desk_events WHERE case_id=? ORDER BY at", (case_id,)).fetchall()
         return [dict(r, payload=json.loads(r["payload_json"] or "{}")) for r in rows]
+
+    def record(self, case_id: str) -> dict | None:
+        with self.read() as c:
+            row = c.execute("SELECT record_json FROM desk_records WHERE case_id=? ORDER BY revision DESC LIMIT 1",
+                            (case_id,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def records(self, hub_id: str, *, conn=None) -> list[dict]:
+        def run(c):
+            rows = c.execute("SELECT r.record_json FROM desk_records r JOIN desk_cases c ON c.id=r.case_id "
+                             "WHERE c.hub_id=? AND c.preview=0 ORDER BY c.number,r.revision", (hub_id,)).fetchall()
+            return [json.loads(r[0]) for r in rows]
+        if conn is not None:
+            return run(conn)
+        with self.read() as c:
+            return run(c)
+
+    def save_record(self, case_id: str, record: dict, *, actor: str, expected_revision: int | None = None, conn=None) -> dict:
+        from datetime import datetime, timezone
+        def run(c):
+            old = c.execute("SELECT revision,record_json FROM desk_records WHERE case_id=? "
+                            "ORDER BY revision DESC LIMIT 1", (case_id,)).fetchone()
+            prior = json.loads(old[1]) if old else {}
+            if expected_revision is not None and (old[0] if old else 0) != expected_revision:
+                raise StoreError("revision_conflict", "This record changed. Reload before reviewing.", status=409)
+            row = dict(record, revision=(old[0] if old else 0) + 1)
+            row["created_at"] = prior.get("created_at") or datetime.now(timezone.utc).isoformat()
+            if row.get("exceptions"):
+                row["exception_created_at"] = (prior.get("exception_created_at") if prior.get("status") == "exception" else None) or datetime.now(timezone.utc).isoformat()
+            row["reviewed_by"] = actor if row.get("status") == "accepted" else None
+            c.execute("INSERT INTO desk_records VALUES(?,?,?,?,?)", (case_id,row["revision"],dumps(row),actor,now()))
+            self._event(c, case_id, row["revision"], "record." + row["status"], actor,
+                        {"rule_revision": row.get("rule_revision"), "record_revision": row["revision"]})
+            return row
+        if conn is not None:
+            return run(conn)
+        with self.tx() as c:
+            return run(c)
 
     def meta(self, key: str, default=None):
         with self.read() as c:

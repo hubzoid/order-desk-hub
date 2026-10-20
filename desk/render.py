@@ -16,8 +16,9 @@ STATE_LABEL = {
     "waiting_approval": "Waiting for approval", "submitting": "Submitting", "done": "Submitted (docstatus 1)",
     "duplicate": "Duplicate", "rejected": "Rejected", "cancelled": "Cancelled", "error": "Error",
     "ambiguous": "Check needed: the ERP may have accepted this",
+    "needs_review": "Submitted content changed: review in ERP",
 }
-TONE = {"needs_clarification": "warn", "error": "bad", "ambiguous": "bad", "duplicate": "muted", "cancelled": "muted",
+TONE = {"needs_review": "warn", "needs_clarification": "warn", "error": "bad", "ambiguous": "bad", "duplicate": "muted", "cancelled": "muted",
         "done": "good", "erp_draft_saved": "good", "waiting_approval": "warn"}
 
 CSS = """
@@ -64,6 +65,8 @@ def _ts(t) -> str:
 
 
 def case_page(case: dict) -> str:
+    if case.get("record") and not case.get("proposal"):
+        return record_page(case)
     prop = case.get("proposal") or {}
     ev = prop.get("evidence") or {}
     header = ev.get("header") or {}
@@ -192,3 +195,18 @@ def queue_page(listing: dict, *, title: str = "Order & Invoice Desk queue") -> s
             f"initial-scale=1'><title>{_e(title)}</title><style>{CSS}</style></head><body><main><h1>{_e(title)}</h1>"
             f"<div class='card wrap'><table><tr><th>Case</th><th>State</th><th>Kind</th><th>Party</th><th>Reference</th>"
             f"<th class=num>Total</th><th>Owner</th><th>Questions</th></tr>{rows}</table></div></main></body></html>")
+
+
+def record_page(case: dict) -> str:
+    row = case["record"]
+    out = [f"<!doctype html><html lang=en><meta charset=utf-8><meta name=viewport content='width=device-width, initial-scale=1'><title>{_e(case['number'])}</title><style>{CSS}</style><main>"]
+    out.append(f"<h1>{_e(case['number'])}: {_e(row.get('reference'))}</h1><p>{_e(row['document_kind'])} · {_e(row['status'])} · record revision {_e(row['revision'])}</p>")
+    out.append(f"<p>{_e(row.get('party'))} · {_e(row.get('document_date'))} · {_e(row.get('currency'))} {_e(row.get('stated_total'))}</p>")
+    out.append("<p>Organized source record. Payment, stock and ERP posting are unknown unless separately verified.</p>")
+    out.append("<h2>Exceptions</h2>" + "".join(f"<p class=q>{_e(e)}</p>" for e in row.get('exceptions') or []))
+    out.append("<h2>Original lines</h2><table><tr><th>Item</th><th>Quantity</th><th>Unit</th><th>Rate</th><th>Source</th></tr>")
+    for line in row.get("lines") or []:
+        out.append("<tr>" + "".join(f"<td>{_e(line.get(k))}</td>" for k in ("item", "quantity", "unit", "unit_price", "source_ref")) + "</tr>")
+    out.append("</table><h2>Evidence</h2>")
+    out.extend(f"<p><b>{_e(e['id'])} · {_e(e.get('loc'))}</b><br>{_e(e['text'])}</p>" for e in row.get("evidence") or [])
+    return "".join(out) + "</main></html>"

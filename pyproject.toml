@@ -38,6 +38,7 @@ erp = ["datasets/distributor-v1/**/*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
+  "slow: runs an SDK integration that may inspect Git through a child process",
   "erp_live: needs the disposable ERPNext test site (docker compose project hubzoid-erpnext-test)",
   "docling: needs the parsing extra and its model assets (heavy)",
   "real_model: needs the installed Claude Code login (claude-local)",

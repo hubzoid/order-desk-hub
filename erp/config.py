@@ -241,7 +241,14 @@ def current(hub_dir, state_dir) -> Applied | None:
         if file_text is None:
             return None
         cfg = parse(file_text, str(FILE))
-        return apply(hub_dir, state_dir, cfg, expected_revision="absent", actor="hub-load", write_file=False)
+        try:
+            return apply(hub_dir, state_dir, cfg, expected_revision="absent", actor="hub-load", write_file=False)
+        except ERPError as exc:
+            if exc.code != "revision_conflict":
+                raise
+            # Another reader completed the same first initialization. Read its
+            # authoritative revision, including file drift, rather than failing.
+            return current(hub_dir, state_dir)
     cfg = ERPConfig.model_validate(json.loads(row[2]))
     drift = None
     if file_text is None:

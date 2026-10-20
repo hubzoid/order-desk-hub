@@ -1,9 +1,26 @@
 {
   "version": 1,
-  "hub": {"name": "order-invoice-desk", "version": "0.1.0"},
-  "sdk": {"package": "hubzoid", "version": "1.3.2", "repository": "hubzoid/hubzoid", "commit": "2fe729282f85e577574a43ed58ec2a226cf7ae55",
-          "note": "Built and tested on the Hubzoid 2.0 SDK at this origin/main commit, before its release."},
-  "erp_module": {"path": "erp/", "dataset": "distributor-v1"},
-  "parser": {"package": "docling", "version": "2.140.0"},
-  "erpnext": {"qualified": [], "note": "Live qualification not run yet. See testing/erpnext/README.md."}
+  "hub": {
+    "name": "order-invoice-desk",
+    "version": "0.1.0"
+  },
+  "sdk": {
+    "package": "hubzoid",
+    "version": "1.3.2",
+    "repository": "hubzoid/hubzoid",
+    "commit": "f99a22406a65c1306a48485b8182f77be1ac71fb",
+    "note": "Development qualification dependency: bounded Gmail historical import, immutable revision. Promotion requires a tagged qualified SDK release."
+  },
+  "erp_module": {
+    "path": "erp/",
+    "dataset": "distributor-v1"
+  },
+  "parser": {
+    "package": "docling",
+    "version": "2.140.0"
+  },
+  "erpnext": {
+    "qualified": [],
+    "note": "Live qualification not run yet. See testing/erpnext/README.md."
+  }
 }

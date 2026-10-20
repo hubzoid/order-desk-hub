@@ -1,0 +1,2 @@
+# Exact development SDK dependency. Review a tagged release before promotion.
+hubzoid @ git+https://github.com/hubzoid/hubzoid.git@f99a22406a65c1306a48485b8182f77be1ac71fb

@@ -1,5 +1,9 @@
 version: 1
 settings:
+  - name: DESK_ERP_ENABLED
+    description: Optional ERP enrichment and approved writes. Inbox records and reports work without it.
+    type: boolean
+    default: false
   - name: DESK_SOURCES
     description: Where documents may come from (upload, email, whatsapp).
     type: string_list

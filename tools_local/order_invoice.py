@@ -91,7 +91,7 @@ def _brief(view: dict) -> dict:
         "case": view["number"], "case_id": view["case_id"], "state": view["state"], "revision": view["revision"],
         "kind": view.get("kind"), "party": view.get("party"), "reference": view.get("reference"),
         "owner": view.get("owner"), "proposal_revision": view.get("proposal_revision"), "digest": view.get("digest"),
-        "total": (ev.get("totals") or {}).get("computed"),
+        "total": view.get("total"), "record": view.get("record"),
         "lines": [{"n": l["n"], "source": (l.get("source") or {}).get("text"), "loc": (l.get("source") or {}).get("loc"),
                    "item": (l.get("item") or {}).get("code"), "qty": (l.get("unit") or {}).get("qty"),
                    "uom": (l.get("unit") or {}).get("uom"), "rate": (l.get("rate") or {}).get("value"),
@@ -148,6 +148,78 @@ class SubmissionDocument(BaseModel):
     currency: str
     lines: list[SubmissionLine]
     totals: SubmissionTotals
+
+
+@function_tool
+def desk_report(kind: str, start: str = "", end: str = "", timezone: str = "UTC", party: str = "", csv_export: bool = False) -> str:
+    """Show register, orders, invoices or exceptions from authorized records without ERP.
+
+    Args:
+        kind: register, orders, invoices or exceptions.
+        start: Inclusive document date YYYY-MM-DD, or empty.
+        end: Exclusive document date YYYY-MM-DD, or empty.
+        timezone: Timezone for timestamp filters, for example UTC.
+        party: Exact party name filter, or empty.
+        csv_export: Export a spreadsheet-safe register CSV in the current authorized chat.
+    """
+    def go(d, a):
+        out = d.report(a, kind, start=start or None, end=end or None, tz=timezone, party=party or None)
+        if csv_export:
+            if kind != "register":
+                raise DeskError("report_invalid", "CSV export is the register. Other reports return structured totals.", status=422)
+            from hubzoid import _request_ctx, memory
+            from hubzoid.tools.files import surface_artifact
+            from desk.reports import csv_text
+            chat = _request_ctx.get_chat_id()
+            if not chat:
+                out["csv"] = csv_text(out)
+            else:
+                folder = memory.chat_artifact_dir(_HUB, chat)
+                folder.mkdir(parents=True, exist_ok=True)
+                (folder / "order-invoice-register.csv").write_text(csv_text(out), encoding="utf-8")
+                surface_artifact("order-invoice-register.csv")
+                out["artifact"] = "order-invoice-register.csv"
+        return out
+    return _run(go)
+
+
+@function_tool
+def desk_review_record(case: str, expected_revision: int, changes_json: str = "{}", accept: bool = False) -> str:
+    """Correct or accept one ERP-free record. Resolve all exceptions before accepting. Never changes shared rules.
+
+    Args:
+        case: Case number or id.
+        expected_revision: Current record revision, shown under record.revision.
+        changes_json: JSON object of evidenced party/reference/date/currency/total/tax/basis/lines corrections.
+        accept: Confirm this validated record for reports. This does not approve any ERP action.
+    """
+    def go(d, a):
+        try:
+            changes = json.loads(changes_json, parse_float=str)
+        except ValueError:
+            raise DeskError("invalid_json", "changes_json must be a JSON object.", status=422) from None
+        return d.review_record(a, case, expected_revision=expected_revision, changes=changes, accept=accept)
+    return _run(go)
+
+
+@function_tool
+def desk_propose_record_rules(rules_json: str, reason: str) -> str:
+    """Propose sourced typed record rules through the SDK Hub change review. Never activates them.
+
+    Args:
+        rules_json: A RecordRules JSON object with version/company, auto_accept, tolerance, rounding,
+            default_tax_basis, aliases, conversions and source_refs. Unsupported policies require engineering.
+        reason: Evidence and holdout validation explaining this proposed change.
+    """
+    def go(d, a):
+        try:
+            rules = json.loads(rules_json, parse_float=str)
+        except ValueError:
+            raise DeskError("invalid_json", "rules_json must be a JSON object.", status=422) from None
+        if not isinstance(rules, dict):
+            raise DeskError("invalid_json", "rules_json must be a JSON object.", status=422)
+        return d.propose_record_rules(a, rules=rules, reason=reason)
+    return _run(go)
 
 
 @function_tool

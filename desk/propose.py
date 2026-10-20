@@ -802,10 +802,11 @@ def _invoice(ctx: Context, reads: _Reads, extraction: Extraction, by_id, header,
                                       source=_source(by_id, billed_to.source_ref), rule=f"{INVOICE_POLICY}#I1"))
     if extraction.stated_tax:
         tax = to_number(extraction.stated_tax.value)
-        if tax:
+        if tax and ov.get("tax") != "erp_template_checked":
             questions.append(Question("tax_present", f"The invoice shows tax of {dstr(tax)}. This desk sends no tax "
                                       "lines: ERPNext applies its own tax template. Check the template before going "
-                                      "on.", "tax", answer_type="text", source=_source(by_id, extraction.stated_tax.source_ref),
+                                      "on.", "tax", answer_type="text",
+                                      options=[{"value": "erp_template_checked", "label": "I checked the ERP tax template"}], source=_source(by_id, extraction.stated_tax.source_ref),
                                       rule=f"{INVOICE_POLICY}#I6"))
     po_ids = []
     for c in extraction.purchase_order_refs:
