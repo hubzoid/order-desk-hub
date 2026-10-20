@@ -1,5 +1,8 @@
 version: 1
 doctor:
+  - id: desk.storage
+    entrypoint: doctor/desk.py:storage
+    required: true
   - id: desk.sdk
     entrypoint: doctor/desk.py:sdk
     required: true

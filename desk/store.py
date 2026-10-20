@@ -415,11 +415,15 @@ class Store:
                             (case_id,)).fetchone()
         return json.loads(row[0]) if row else None
 
-    def records(self, hub_id: str) -> list[dict]:
-        with self.read() as c:
+    def records(self, hub_id: str, *, conn=None) -> list[dict]:
+        def run(c):
             rows = c.execute("SELECT r.record_json FROM desk_records r JOIN desk_cases c ON c.id=r.case_id "
                              "WHERE c.hub_id=? AND c.preview=0 ORDER BY c.number,r.revision", (hub_id,)).fetchall()
-        return [json.loads(r[0]) for r in rows]
+            return [json.loads(r[0]) for r in rows]
+        if conn is not None:
+            return run(conn)
+        with self.read() as c:
+            return run(c)
 
     def save_record(self, case_id: str, record: dict, *, actor: str, expected_revision: int | None = None, conn=None) -> dict:
         from datetime import datetime, timezone

@@ -211,10 +211,6 @@ def from_extraction(ex: Extraction, elements: list[dict], *, case: dict, rules: 
         lines.append({"item": mapped, "description": line.description_seen, "quantity": line.quantity,
                       "unit": line.unit_seen, "unit_price": line.unit_price, "amount": line.amount,
                       "source_ref": line.source_ref, "raw_text": line.raw_text})
-        for c in rules.conversions:
-            if norm_text(c.item) == norm_text(mapped) and norm_text(c.source_unit) == norm_text(line.unit_seen):
-                converted.append({"line": i, "from": line.unit_seen, "to": c.target_unit,
-                                  "factor": c.factor, "source_ref": c.source_ref})
     row = {"record_id": case["id"], "company": case["company"], "case_number": case.get("number"),
            "document_kind": {"customer_order": "order", "supplier_invoice": "invoice"}.get(ex.document_kind, ex.document_kind),
            "reference": ex.reference.value if ex.reference else None, "party": ex.party_name_seen,
@@ -232,4 +228,19 @@ def from_extraction(ex: Extraction, elements: list[dict], *, case: dict, rules: 
     if ex.instructions_seen:
         row["source_problems"].append("untrusted_instructions")
     row.update(changes or {})
+    row["case_changes"] = dict(changes or {})
+    row["approved_conversions"] = approved_conversions(row["lines"], rules)
+    row["source_problems"] = [p for p in row["source_problems"] if p not in row.get("source_acknowledgements", [])]
     return validate(row, rules)
+
+
+def approved_conversions(lines: list[dict], rules: RecordRules) -> list[dict]:
+    converted = []
+    for i, line in enumerate(lines if isinstance(lines, list) else []):
+        if not isinstance(line, dict):
+            continue
+        for c in rules.conversions:
+            if norm_text(c.item) == norm_text(line.get("item")) and norm_text(c.source_unit) == norm_text(line.get("unit")):
+                converted.append({"line": i, "item": line.get("item"), "from": line.get("unit"), "to": c.target_unit,
+                                  "factor": c.factor, "source_ref": c.source_ref})
+    return converted

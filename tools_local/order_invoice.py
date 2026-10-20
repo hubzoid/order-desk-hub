@@ -195,7 +195,7 @@ def desk_review_record(case: str, expected_revision: int, changes_json: str = "{
     """
     def go(d, a):
         try:
-            changes = json.loads(changes_json)
+            changes = json.loads(changes_json, parse_float=str)
         except ValueError:
             raise DeskError("invalid_json", "changes_json must be a JSON object.", status=422) from None
         return d.review_record(a, case, expected_revision=expected_revision, changes=changes, accept=accept)
@@ -211,7 +211,15 @@ def desk_propose_record_rules(rules_json: str, reason: str) -> str:
             default_tax_basis, aliases, conversions and source_refs. Unsupported policies require engineering.
         reason: Evidence and holdout validation explaining this proposed change.
     """
-    return _run(lambda d, a: d.propose_record_rules(a, rules=json.loads(rules_json), reason=reason))
+    def go(d, a):
+        try:
+            rules = json.loads(rules_json, parse_float=str)
+        except ValueError:
+            raise DeskError("invalid_json", "rules_json must be a JSON object.", status=422) from None
+        if not isinstance(rules, dict):
+            raise DeskError("invalid_json", "rules_json must be a JSON object.", status=422)
+        return d.propose_record_rules(a, rules=rules, reason=reason)
+    return _run(go)
 
 
 @function_tool

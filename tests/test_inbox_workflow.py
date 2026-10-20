@@ -74,7 +74,7 @@ def test_same_source_is_idempotent_and_forwarded_copy_is_candidate_not_counted(t
     a = normalize(d)
     assert normalize(d)["record"]["revision"] == 1
     b = normalize(d, "forwarded-mail")
-    assert b["record"]["duplicate_of"] == a["case_id"]
+    assert d.store.record(b["case_id"])["duplicate_of"] == a["case_id"]
     assert "duplicate_candidate" in b["record"]["exceptions"]
     assert not d.report("member", "invoices")["totals_by_currency"]
 
@@ -96,6 +96,13 @@ def test_custom_data_root_and_readonly_source_setup(tmp_path, monkeypatch):
     d = inbox(tmp_path)
     data = tmp_path / "data"
     monkeypatch.setenv("HUBZOID_DATA_DIR", str(data))
+    from hubzoid.datadir import state
+    with pytest.raises(StoreError) as exc:
+        Desk(d.hub_dir, grants=lambda a,p: True)
+    assert exc.value.code == "data_root_migration_required"
+    target = state(d.hub_dir) / "data"
+    target.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(d.hub_dir / ".hubzoid/data/desk"), str(target / "desk"))
     moved = Desk(d.hub_dir, grants=lambda a,p: True)
     assert moved.store.path.is_relative_to(data)
     plan = setup.preview(d.hub_dir, company="Alpha", runtime="codex-local")
@@ -106,7 +113,7 @@ def test_custom_data_root_and_readonly_source_setup(tmp_path, monkeypatch):
 def test_setup_preview_has_no_credentials_and_preserves_repeated_apply(tmp_path):
     d = inbox(tmp_path)
     plan = setup.preview(d.hub_dir, company="Alpha", runtime="codex-local", mailbox="ops@example.org", client_id="client-id",
-                         client_secret_ref="env:GMAIL_CLIENT_SECRET")
+                         client_secret_ref="env:GMAIL_CLIENT_SECRET", whole_inbox=True)
     assert not (d.hub_dir / "channels/orders-mail.yaml").exists()
     assert "env:GMAIL_CLIENT_SECRET" in json.dumps(plan)
     setup.apply(d.hub_dir, plan, plan["digest"])
@@ -138,6 +145,6 @@ def test_gmail_channels_have_distinct_oauth_slots_and_keep_custom_sources(tmp_pa
     assert refs == [f"secret:channel/{d.hub_id}/{channel}/gmail-oauth" for channel in ("orders", "invoices")]
     assert len(set(refs)) == 2
     whole = setup.preview(d.hub_dir, company="Alpha", runtime="codex-local", mailbox="whole@example.org",
-                          client_id="id", client_secret_ref="env:GMAIL_CLIENT_SECRET")
+                          client_id="id", client_secret_ref="env:GMAIL_CLIENT_SECRET", whole_inbox=True)
     assert whole["ongoing_scope"]["label_ids"] == ["INBOX"]
     assert "all newly admitted INBOX mail" in whole["ongoing_scope"]["retention"]

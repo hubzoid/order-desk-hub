@@ -29,9 +29,21 @@ def hub_key(hub_dir) -> str:
         return Path(hub_dir).resolve().name.lower()
 
 
+def check_data_root(hub_dir) -> None:
+    from hubzoid.datadir import state
+    from .store import StoreError
+
+    hub = Path(hub_dir)
+    legacy = hub / ".hubzoid" / "data"
+    target = state(hub) / "data"
+    if target.resolve() != legacy.resolve() and any((legacy / name).exists() for name in ("desk", "erp")):
+        raise StoreError("data_root_migration_required", "Legacy desk/ERP state exists under .hubzoid/data. Stop workers, back up, then explicitly move existing desk and ERP state to the configured data root, preserving deployment-id, records and operation receipts. See docs/qualification.md.", status=409)
+
+
 def data_dir(hub_dir) -> Path:
     from hubzoid.datadir import state
 
+    check_data_root(hub_dir)
     path = state(Path(hub_dir)) / "data" / "desk"
     path.mkdir(parents=True, exist_ok=True)
     return path

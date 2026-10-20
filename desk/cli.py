@@ -112,13 +112,14 @@ def setup_cmd(hub: Path = HUB, company: str = typer.Option(..., "--company"),
               runtime: str = typer.Option("claude-local", "--runtime"), mailbox: str = typer.Option("", "--mailbox"),
               client_id: str = typer.Option("", "--client-id"), secret_ref: str = typer.Option("", "--client-secret-ref"),
               channel: str = typer.Option("orders-mail", "--channel"),
-              gmail_labels: list[str] = typer.Option(None, "--gmail-label", help="Repeat existing Gmail label IDs for recurring intake. Default INBOX means whole-INBOX retention."), apply_digest: str = typer.Option("", "--apply"),
+              gmail_labels: list[str] = typer.Option(None, "--gmail-label", help="One existing business label ID for recurring intake."),
+              whole_inbox: bool = typer.Option(False, "--whole-inbox", help="Explicitly retain all newly admitted INBOX mail; history keywords do not filter polling."), apply_digest: str = typer.Option("", "--apply"),
               as_json: bool = typer.Option(False, "--json")):
     """Preview ERP-free setup. Apply only the exact reviewed digest on a trusted local checkout."""
     from . import setup
     def go():
         plan = setup.preview(hub, company=company, runtime=runtime, mailbox=mailbox, client_id=client_id,
-                             client_secret_ref=secret_ref, channel=channel, label_ids=gmail_labels)
+                             client_secret_ref=secret_ref, channel=channel, label_ids=gmail_labels, whole_inbox=whole_inbox)
         return setup.apply(hub, plan, apply_digest) if apply_digest else plan
     _run(as_json, go)
 
@@ -153,7 +154,7 @@ def review_record_cmd(hub: Path = HUB, case: str = CASE,
     def go():
         d = _desk(hub)
         try:
-            edits = json.loads(changes)
+            edits = json.loads(changes, parse_float=str)
         except ValueError:
             raise DeskError("invalid_json", "--changes must be a JSON object.", status=422) from None
         return d.review_record(_person(d), case, expected_revision=expected_revision, changes=edits, accept=accept)

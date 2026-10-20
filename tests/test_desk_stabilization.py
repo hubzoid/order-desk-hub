@@ -33,12 +33,13 @@ def test_two_invoices_cannot_draft_the_same_remaining_sixty_units(tmp_path):
         try:
             view = d.dispatch_draft(case['id'], requester=OWNER, expect=expect,
                                    arguments={'kind': prop['kind'], 'payload': prop['payload'], 'external_ref': case['id']})
+            d.record_draft(case['id'], work_item_id=case['id'], operation_id=None, view=view, actor=OWNER)
             return view['name']
         except DeskError as exc:
             return exc.code
     with ThreadPoolExecutor(2) as pool:
         results = list(pool.map(send, (first, second)))
-    assert results.count('receipt_capacity_changed') == 1, results
+    assert sum(r in ('receipt_capacity_changed', 'receipt_capacity_uncertain') for r in results) == 1, results
     assert sum(r.startswith('PINV-') or r.startswith('ACC-PINV-') for r in results) == 1, results
 
 

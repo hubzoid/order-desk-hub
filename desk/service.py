@@ -25,7 +25,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from erp import digest as erp_digest
-from erp.errors import ERPError
+from erp.errors import ERPError, NotDispatched
 from erp.models import ERPContext
 from erp.service import ERPService
 
@@ -112,6 +112,26 @@ class Desk:
         if not self._visible(actor, case):
             raise DeskError("permission_denied", "This source is outside your granted mailbox/upload scope.", status=403)
 
+    def _case_for(self, actor: str, case_id: str) -> dict:
+        case = self.store.require_case(case_id, self.hub_id)
+        self._require_visible(actor, case)
+        return case
+
+    def _require_erp(self):
+        if not self.erp_enabled():
+            raise DeskError("erp_addon_off", "ERP addon is off. Review normalized records with review_record.", status=409)
+
+    def _deduplicate_record(self, row: dict, conn) -> dict:
+        row.pop("duplicate_of", None)
+        keys = ("company", "document_kind", "party", "reference")
+        if row.get("reference") and row.get("party"):
+            for other in reports_lib.latest(self.store.records(self.hub_id, conn=conn)):
+                if (other["record_id"] != row["record_id"] and other.get("status") != "superseded"
+                        and not other.get("duplicate_of") and all(other.get(k) == row.get(k) for k in keys)):
+                    row["duplicate_of"] = other["record_id"]
+                    break
+        return row
+
     def report(self, actor: str, kind: str, **filters) -> dict:
         self.require(actor, "desk_view", "Reading desk reports")
         rows = []
@@ -127,8 +147,10 @@ class Desk:
     def review_record(self, actor: str, case_id: str, *, expected_revision: int, changes: dict | None = None,
                       accept: bool = False) -> dict:
         self.require(actor, "desk_operate", "Reviewing a record")
-        case = self.store.require_case(case_id, self.hub_id)
+        case = self._case_for(actor, case_id)
         self._require_visible(actor, case)
+        if case["state"] in ("cancelled", "rejected"):
+            raise DeskError("invalid_state", "This record is dismissed and cannot be accepted.", status=409)
         if case.get("erp_name"):
             raise DeskError("invalid_state", "A linked ERP document is reviewed in ERP, without rewriting its source record.", status=409)
         row = self.store.record(case["id"])
@@ -148,20 +170,18 @@ class Desk:
             raise DeskError("rules_changed", "Rules changed. Rerun this case for a fresh source preview before reviewing.", status=409)
         row = dict(row, **edits, status="unreviewed")
         row["case_changes"] = {**row.get("case_changes", {}), **edits}
-        if row.get("duplicate_of"):
-            other = self.store.record(row["duplicate_of"])
-            if other and any(other.get(k) != row.get(k) for k in ("party", "reference", "company", "document_kind")):
-                row.pop("duplicate_of", None)
         row["source_acknowledgements"] = sorted(set(row.get("source_acknowledgements") or []) | set(acknowledgements))
-        row["source_problems"] = [p for p in row.get("source_problems") or [] if p not in acknowledgements]
-        row = records_lib.validate(row, self.record_rules())
-        if accept and row["exceptions"]:
-            raise DeskError("record_has_exceptions", "Resolve every exception before accepting.", status=409,
-                            exceptions=row["exceptions"])
-        if accept:
-            row["status"] = "accepted"
+        row["case_changes"]["source_acknowledgements"] = row["source_acknowledgements"]
+        row["source_problems"] = [p for p in row.get("source_problems") or [] if p not in row["source_acknowledgements"]]
+        row["approved_conversions"] = records_lib.approved_conversions(row.get("lines") or [], current_rules)
         row["correction_reason"] = "human reviewed case correction"
         with self.store.tx() as conn:
+            row = records_lib.validate(self._deduplicate_record(row, conn), current_rules)
+            if accept and row["exceptions"]:
+                raise DeskError("record_has_exceptions", "Resolve every exception before accepting.", status=409,
+                                exceptions=row["exceptions"])
+            if accept:
+                row["status"] = "accepted"
             row = self.store.save_record(case["id"], row, actor=actor, expected_revision=expected_revision, conn=conn)
             if not self.erp_enabled():
                 questions = [{"code": e, "field": e, "message": e.replace("_", " ")} for e in row["exceptions"]]
@@ -184,8 +204,18 @@ class Desk:
             edit.update(old_text=path.read_text(), new_text=new)
         else:
             edit["content"] = new
-        return changes.public(changes.propose(self.hub_dir, title="Review Order Desk rules", actor=actor,
-                             via="tool", present=False, reason=reason, edits=[edit]))
+        try:
+            return changes.public(changes.propose(self.hub_dir, title="Review Order Desk rules", actor=actor,
+                                 via="tool", present=False, reason=reason, edits=[edit]))
+        except changes.ChangeError as exc:
+            if exc.code != "hub_read_only":
+                raise DeskError(exc.code, exc.message, status=exc.status) from None
+            import difflib
+            old = path.read_text() if path.is_file() else ""
+            return {"status": "builder_change_required", "path": records_lib.RULE_FILE, "new_text": new,
+                    "diff": "".join(difflib.unified_diff(old.splitlines(True), new.splitlines(True),
+                                                       fromfile=records_lib.RULE_FILE, tofile=records_lib.RULE_FILE)),
+                    "next_action": "Apply this diff in the authorized builder checkout, review and redeploy. No pending Hub change was stored."}
 
     # -- settings, rules, permissions ---------------------------------------------------------------
     def settings(self) -> dict:
@@ -437,24 +467,18 @@ class Desk:
         attachments = [d for d in self.store.documents(case_id) if d.get("ordinal", 0) > 0]
         if len(attachments) > 1:
             normalized["source_problems"].append("multiple_documents_need_review")
-        normalized = records_lib.validate(normalized, rr)
-        if normalized.get("reference") and normalized.get("party"):
-            for other in reports_lib.latest(self.store.records(self.hub_id)):
-                if other["record_id"] != case_id and all(other.get(k) == normalized.get(k)
-                    for k in ("company", "document_kind", "party", "reference")):
-                    normalized["duplicate_of"] = other["record_id"]
-                    normalized = records_lib.validate(normalized, rr)
-                    break
-        if not self.erp_enabled():
-            questions = [{"code": e, "message": e.replace("_", " "), "field": e} for e in normalized["exceptions"]]
-            with self.store.tx() as conn:
-                self.store.save_record(case_id, normalized, actor=actor, conn=conn)
+        normalized["source_problems"] = [p for p in normalized["source_problems"] if p not in normalized.get("source_acknowledgements", [])]
+        with self.store.tx() as conn:
+            normalized = records_lib.validate(self._deduplicate_record(normalized, conn), rr)
+            self.store.save_record(case_id, normalized, actor=actor, conn=conn)
+            if not self.erp_enabled():
+                questions = [{"code": e, "message": e.replace("_", " "), "field": e} for e in normalized["exceptions"]]
                 self.store.update_case(case_id, expected_revision=expected_revision, conn=conn,
                                        state="needs_clarification" if questions else "done" if normalized["status"] == "accepted" else "needs_owner",
                                        kind=ex.document_kind, business_reference=normalized.get("reference"),
                                        question_json=questions, policy_digest=rr.digest(), event="record.normalized", actor=actor)
+        if not self.erp_enabled():
             return self._summary(self.store.get_case(case_id))
-        self.store.save_record(case_id, normalized, actor=actor)
         try:
             rules = self.rules()
         except policy_lib.PolicyError as exc:
@@ -572,7 +596,7 @@ class Desk:
             "needs_review": bool((case.get("flags_json") or {}).get("needs_review")),
             "duplicate_of": case.get("duplicate_of"), "error": {"code": case["error_code"], "message":
                                                                 case.get("error_message")} if case.get("error_code") else None,
-            "total": total, "record": record,
+            "total": total, "record": {k: record.get(k) for k in ("revision", "status", "exceptions", "rule_revision")} if record else None,
             "next_action": "Review the submitted document in ERP. Do not rerun or repost this case." if case["state"] == "needs_review" else None,
             "digest": (prop or {}).get("digest"), "received_at": case.get("received_at"),
             "channel": case.get("channel"), "sender": (case.get("sender_json") or {}).get("external_id"),
@@ -596,10 +620,11 @@ class Desk:
 
     def show(self, actor: str, case_id: str) -> dict:
         self.require(actor, "desk_view", "Seeing a case")
-        case = self.store.require_case(case_id, self.hub_id)
+        case = self._case_for(actor, case_id)
         self._require_visible(actor, case)
         case = self.sync(case)
         out = self._summary(case)
+        out["record"] = self.store.record(case["id"])
         prop = self.store.proposal(case["id"], case.get("proposal_revision")) if case.get("proposal_revision") else None
         out["documents"] = [{k: d.get(k) for k in ("label", "filename", "media_type", "sha256", "size", "parser",
                                                    "parse_status", "error_code")} | {"elements": d["elements"]}
@@ -621,7 +646,13 @@ class Desk:
 
     def actions(self, actor: str, case: dict) -> list[str]:
         if not self.erp_enabled():
-            return ["review_record"] if self.can(actor, "desk_operate") and self._visible(actor, case) else []
+            if not self.can(actor, "desk_operate") or not self._visible(actor, case) or case["state"] in ("cancelled", "rejected"):
+                return []
+            record = self.store.record(case["id"])
+            acts = ["review_record", "cancel"]
+            if record and record.get("rule_revision") != self.record_rules().digest():
+                acts.append("rerun")
+            return acts
         s, own = case["state"], case.get("owner")
         if s == "needs_review":
             return []  # submitted already: the human reviews in ERP, never reruns/reposts
@@ -659,7 +690,8 @@ class Desk:
     def claim(self, actor: str, case_id: str, *, expected_revision: int) -> dict:
         """Atomic: of two operators claiming at once, exactly one wins."""
         self.require(actor, "desk_operate", "Claiming a case")
-        case = self.store.require_case(case_id, self.hub_id)
+        case = self._case_for(actor, case_id)
+        self._require_erp()
         if case.get("owner") and case["owner"] != actor:
             raise DeskError("owner_conflict", f"{case_number(case)} is already claimed by {case['owner']}.", status=409,
                             current_revision=case["revision"], owner=case["owner"])
@@ -686,7 +718,9 @@ class Desk:
         return self._summary(case)
 
     def release(self, actor: str, case_id: str, *, expected_revision: int, reason: str = "") -> dict:
-        case = self.store.require_case(case_id, self.hub_id)
+        self.require(actor, "desk_operate", "Releasing a case")
+        case = self._case_for(actor, case_id)
+        self._require_erp()
         if case.get("owner") != actor and not actor.startswith("cli:"):
             raise DeskError("permission_denied", "Only the case owner can release it.", status=403)
         self._cancel_pending(case, actor, "released")
@@ -705,7 +739,8 @@ class Desk:
             raise DeskError("validation_failed", "Say why the case is reassigned.", status=422)
         if not self.can(to, "desk_operate"):
             raise DeskError("permission_denied", f"{to} cannot operate this desk (needs desk_operate).", status=403)
-        case = self.store.require_case(case_id, self.hub_id)
+        case = self._case_for(actor, case_id)
+        self._require_erp()
         if case["state"] in ("submitting",):
             raise DeskError("invalid_state", "A submission is being sent. Wait for it to settle.", status=409)
         self._cancel_pending(case, actor, "reassigned")
@@ -748,7 +783,8 @@ class Desk:
     def correct(self, actor: str, case_id: str, *, expected_revision: int, fields: list[dict]) -> dict:
         """Case corrections: a new proposal revision with the given values
         applied over the extraction. They never change a shared rule."""
-        case = self.store.require_case(case_id, self.hub_id)
+        case = self._case_for(actor, case_id)
+        self._require_erp()
         self._owner(actor, case, "Correcting a case")
         if case["state"] not in ("needs_clarification", "draft_ready"):
             raise DeskError("invalid_state", f"{case_number(case)} is {case['state']}. Only a proposal before its ERP "
@@ -809,7 +845,7 @@ class Desk:
     def rerun(self, actor: str, case_id: str, *, reason: str) -> dict:
         """Match the same document again with the current rules (after an
         alias or policy change). The extraction and sources are kept."""
-        case = self.store.require_case(case_id, self.hub_id)
+        case = self._case_for(actor, case_id)
         if case["state"] not in (("needs_owner", "needs_clarification", "draft_ready", "duplicate") + (("done",) if not case.get("erp_name") else ())):
             raise DeskError("invalid_state", f"{case_number(case)} is {case['state']}. A case with an ERP draft is "
                             "never re-proposed silently: change the draft in the ERP.", status=409)
@@ -839,7 +875,8 @@ class Desk:
 
     # -- ERP actions (admitted as SDK work items) ------------------------------------------------------------
     def request_draft(self, actor: str, case_id: str, *, expected_revision: int, digest: str) -> dict:
-        case = self.store.require_case(case_id, self.hub_id)
+        case = self._case_for(actor, case_id)
+        self._require_erp()
         self._owner(actor, case, "Saving an ERP draft")
         prop_now = self.store.proposal(case["id"])
         if prop_now and prop_now.get("policy_digest") != self.rules().digest:
@@ -865,7 +902,8 @@ class Desk:
 
     def request_submit(self, actor: str, case_id: str, *, expected_revision: int, digest: str,
                        erp_version: str | None = None) -> dict:
-        case = self.store.require_case(case_id, self.hub_id)
+        case = self._case_for(actor, case_id)
+        self._require_erp()
         self._owner(actor, case, "Asking to submit")
         self.require(actor, "desk_submit", "Asking to submit an ERP draft")
         if self.write_mode() != "approve":
@@ -939,7 +977,10 @@ class Desk:
         `resuming`: the recheck inside the write. The case may then be
         `ambiguous` because of this very operation, when its requester chose
         to send it again."""
-        case = self.store.require_case(case_id, self.hub_id)
+        from .paths import check_data_root
+        check_data_root(self.hub_dir)
+        case = self._case_for(requester, case_id)
+        self._require_erp()
         mode = self.write_mode()
         if mode == "off" or (action == "submit" and mode != "approve"):
             raise DeskError("write_mode_off", f"erp.submit is {mode} in work-items.yaml now, so this "
@@ -956,6 +997,8 @@ class Desk:
             if prop is None or prop["digest"] != expect["digest"] or case["proposal_revision"] != prop["revision"]:
                 raise DeskError("stale_preview", "The proposal changed after this request. Review it again.",
                                 status=409)
+            if prop.get("policy_digest") != self.rules().digest:
+                raise DeskError("rules_changed", "Rules changed after this request. Review a fresh proposal.", status=409)
             return {"case": case, "proposal": prop}
         allowed = ("erp_draft_saved", "waiting_approval", "submitting") + (("ambiguous",) if resuming else ())
         if case["state"] not in allowed:
@@ -978,21 +1021,72 @@ class Desk:
                                 + "; ".join(problems) + ". Rerun the case to propose against the ERP as it is now.",
                                 status=409, problems=problems)
 
-    def dispatch_draft(self, case_id: str, *, requester: str, expect: dict, arguments: dict, writer=None):
-        """Serialize receipt recheck and draft creation across this deployment.
+    def _invoice_fence_key(self) -> str:
+        cfg = self.erp.config()
+        return "invoice_capacity:" + erp_digest.sha({"site": cfg.site_fingerprint(), "company": cfg.company})
 
-        SQLite's write lock is process-safe and released after a crash. This
-        covers concurrent desk workers sharing the data root. Other ERP
-        clients need the ERP's own validation and are not covered by this lock.
-        """
-        writer = writer or self.erp.writer()
+    def _release_invoice_fence(self, key: str, expected: dict) -> bool:
+        # Compare exact intent bytes. Never clear another operation's reservation.
+        from .store import dumps
         with self.store.tx() as conn:
-            unresolved = conn.execute("SELECT id FROM desk_cases WHERE hub_id=? AND state='ambiguous' "
-                                      "AND kind='purchase_invoice' AND id<>? LIMIT 1", (self.hub_id, case_id)).fetchone()
-            if arguments["kind"] == "purchase_invoice" and unresolved:
-                raise DeskError("receipt_capacity_uncertain", "Reconcile the uncertain invoice before reserving more receipt capacity.", status=409)
+            return conn.execute("DELETE FROM desk_meta WHERE key=? AND value=?", (key, dumps(expected))).rowcount == 1
+
+    def dispatch_draft(self, case_id: str, *, requester: str, expect: dict, arguments: dict, writer=None, work_item_id: str | None = None):
+        """Persist the invoice capacity reservation BEFORE sending anything.
+
+        This narrow business fence survives a rollback, process loss and the
+        gap before SDK sending/ambiguous state is projected onto a case. It
+        has no expiry. Only the same exact logical operation may continue its
+        existing recovery path. Other ERP clients still need ERP-side guards.
+        """
+        from .store import dumps
+        writer = writer or self.erp.writer()
+        invoice = arguments["kind"] == "purchase_invoice"
+        key = self._invoice_fence_key() if invoice else None
+        fence = None
+        newly_claimed = False
+        with self.store.tx() as conn:
+            if invoice:
+                fence = {"case_id": case_id, "proposal_revision": expect["proposal_revision"],
+                         "external_ref": arguments["external_ref"], "payload_digest": erp_digest.sha(arguments["payload"]),
+                         "marker": writer.marker(arguments["external_ref"]), "company": self.erp.config().company}
+                held = conn.execute("SELECT value FROM desk_meta WHERE key=?", (key,)).fetchone()
+                previous = json.loads(held[0]) if held else None
+                if previous and any(previous.get(k) != v for k, v in fence.items()):
+                    raise DeskError("receipt_capacity_uncertain", "An earlier invoice write for this ERP site/company "
+                                    "still holds receipt capacity. Its owner or an administrator must reconcile "
+                                    "the original operation before another invoice can be drafted.", status=409)
             self.recheck(case_id, action="draft", requester=requester, expect=expect, payload=arguments["payload"])
+            if invoice and not held:
+                fence["work_item_id"] = work_item_id
+                conn.execute("INSERT INTO desk_meta(key,value) VALUES(?,?)", (key, dumps(fence)))
+                newly_claimed = True
+            elif invoice:
+                fence = previous
+        # The claim is durable before HTTP. A later writer cannot race through
+        # a rolled-back network transaction or a not-yet-synced case state.
+        try:
             return writer.create_draft(arguments["kind"], arguments["payload"], arguments["external_ref"])
+        except NotDispatched:
+            # A failed retry cannot erase an earlier uncertain attempt. Only a
+            # fresh claim with a definitive never-sent result can be released.
+            if invoice and newly_claimed:
+                self._release_invoice_fence(key, fence)
+            raise
+        # All other outcomes (including process loss and BaseException) retain
+        # the claim until exact named readback and durable record_draft below.
+
+    def _recorded_invoice_fence(self, case_id: str, view: dict) -> None:
+        key = self._invoice_fence_key()
+        fence = self.store.meta(key)
+        if not fence or fence.get("case_id") != case_id:
+            return
+        if not (view.get("kind") == "purchase_invoice" and view.get("name") and view.get("docstatus") == 0
+                and view.get("company") == fence["company"] and view.get("marker") == fence["marker"]
+                and view.get("content_digest") and view.get("approval_digest")):
+            raise DeskError("receipt_capacity_uncertain", "The named readback does not prove this exact invoice "
+                            "operation. Keep its capacity reservation and reconcile it.", status=409)
+        self._release_invoice_fence(key, fence)
 
     def submission_arguments(self, case: dict, view: dict) -> dict:
         """The exact content a person approves: everything the Console shows
@@ -1003,7 +1097,7 @@ class Desk:
                 "lines": [{k: l.get(k) for k in ("item_code", "qty", "uom", "conversion_factor", "rate", "amount")}
                           for l in view["lines"]],
                 "totals": {k: view["totals"].get(k) for k in ("total", "total_taxes_and_charges", "grand_total")},
-                "approval_digest": view["approval_digest"], "backend": view["backend"],
+                "approval_digest": view["approval_digest"], "approved_content_digest": view["content_digest"], "backend": view["backend"],
                 "synthetic": view["synthetic"]}
 
     def record_draft(self, case_id: str, *, work_item_id: str, operation_id: str | None, view: dict, actor: str):
@@ -1019,10 +1113,16 @@ class Desk:
         self.store.link(case_id, work_item_id=work_item_id, action="draft", operation_id=operation_id,
                         erp_doctype=view["doctype"], erp_name=view["name"], erp_modified=view["erp_modified"],
                         docstatus=view["docstatus"], digest=view["approval_digest"], state="succeeded")
+        if view.get("kind") == "purchase_invoice":
+            self._recorded_invoice_fence(case_id, view)
         return case
 
     def record_state(self, case_id: str, state: str, *, actor: str, event: str, **fields):
         return self.store.update_case(case_id, state=state, event=event, actor=actor, **fields)
+
+    @staticmethod
+    def submission_readback(view: dict, approved_content_digest: str | None) -> dict:
+        return dict(view, needs_review=(not approved_content_digest or view.get("content_digest") != approved_content_digest))
 
     def record_submitted(self, case_id: str, *, work_item_id: str, operation_id: str | None, view: dict, actor: str):
         case = self.store.update_case(case_id, state="needs_review" if view.get("needs_review") else "done", erp_doctype=view["doctype"], erp_name=view["name"],
@@ -1095,6 +1195,9 @@ class Desk:
                     if link["action"] == "draft":
                         return self.record_draft(case["id"], work_item_id=item["id"], operation_id=op["id"],
                                                  view=view, actor="desk")
+                    from hubzoid.work_items import operations
+                    approved = operations.row_arguments(self.hub_dir, op).get("approved_content_digest")
+                    view = self.submission_readback(view, approved)
                     return self.record_submitted(case["id"], work_item_id=item["id"], operation_id=op["id"],
                                                  view=view, actor="desk")
         return case
@@ -1104,14 +1207,22 @@ class Desk:
         """Read the ERP for the operation's marker and show the evidence. It
         never writes. The person who asked for the work then decides with the
         SDK's resolve (done with this evidence, retry or abandon)."""
-        case = self.store.require_case(case_id, self.hub_id)
+        case = self._case_for(actor, case_id)
+        self._require_erp()
         if case.get("owner") != actor:
             self.require(actor, "desk_manage", "Reconciling a case")
         from hubzoid.work_items import store as wi_store
 
         out = {"case": case_number(case), "state": case["state"], "operations": []}
         writer = self.erp.writer()
-        for link in self.store.links(case["id"]):
+        links = self.store.links(case["id"])
+        held = self.store.meta(self._invoice_fence_key())
+        if held and held.get("case_id") == case["id"]:
+            out["receipt_capacity_reservation"] = {k: held.get(k) for k in ("external_ref", "proposal_revision", "work_item_id")}
+            out["reservation_next"] = "Retained until this exact operation has a named readback and its draft is recorded. Absence, abandon and elapsed time do not release it."
+            if held.get("work_item_id") and not any(link.get("work_item_id") == held["work_item_id"] for link in links):
+                links.append({"work_item_id": held["work_item_id"], "proposal_revision": held["proposal_revision"], "action": "draft"})
+        for link in links:
             item = wi_store.get_item(self.hub_dir, link["work_item_id"]) if link.get("work_item_id") else None
             if item is None:
                 continue
@@ -1177,17 +1288,25 @@ class Desk:
         return f"{self.hub_id}:case:{case_id}:proposal:{revision}:draft"
 
     def cancel(self, actor: str, case_id: str, *, expected_revision: int, reason: str) -> dict:
-        case = self.store.require_case(case_id, self.hub_id)
+        case = self._case_for(actor, case_id)
         if case["state"] == "needs_review" or case.get("erp_docstatus") == 1:
             raise DeskError("review_in_erp", "This document is submitted. Review it in ERP, never cancel/repost it from this case.", status=409)
-        if case.get("owner") != actor:
+        if not self.erp_enabled():
+            self.require(actor, "desk_operate", "Dismissing a normalized record")
+        elif case.get("owner") != actor:
             self.require(actor, "desk_manage", "Cancelling someone else's case")
+        else:
+            self.require(actor, "desk_operate", "Cancelling a case")
         if case["state"] in ("waiting_approval", "submitting"):
             raise DeskError("invalid_state", "Deny or settle the pending submission first.", status=409)
         self._cancel_pending(case, actor, "cancelled")
-        self.store.release_business_key(case["id"])
-        case = self.store.update_case(case["id"], expected_revision=expected_revision, state="cancelled",
-                                      event="case.cancelled", actor=actor, payload={"reason": reason[:500]})
+        with self.store.tx() as conn:
+            conn.execute("DELETE FROM desk_duplicate_keys WHERE case_id=?", (case["id"],))
+            row = self.store.record(case["id"])
+            if row:
+                self.store.save_record(case["id"], dict(row, status="superseded", exceptions=[], reason=reason[:500]), actor=actor, conn=conn)
+            case = self.store.update_case(case["id"], conn=conn, expected_revision=expected_revision, state="cancelled",
+                                          event="case.cancelled", actor=actor, payload={"reason": reason[:500]})
         note = " The ERP draft stays in the ERP." if case.get("erp_name") else ""
         return dict(self._summary(case), message=f"{case_number(case)} cancelled.{note}")
 
@@ -1215,7 +1334,15 @@ class Desk:
                           "ready_submit": erp["ready_submit"]}
         except Exception as exc:  # noqa: BLE001
             connection = {"error": type(exc).__name__}
+        reservation = None
+        if self.erp_enabled():
+            held = self.store.meta(self._invoice_fence_key())
+            if held:
+                blocked = self.store.get_case(held["case_id"])
+                reservation = {"held": True, "next": "Reconcile the original invoice operation before drafting another invoice for this ERP site/company."}
+                if blocked and self._visible(actor, blocked):
+                    reservation.update(case=case_number(blocked), work_item_id=held.get("work_item_id"))
         return {"queue": queue, "duplicates": duplicates, "ambiguous": ambiguous, "errors": errors,
                 "intake_enabled": bool(self.settings()["DESK_INTAKE_ENABLED"]), "write_mode": self.write_mode(),
-                "erp": connection}
+                "erp": connection, "receipt_capacity_reservation": reservation}
 

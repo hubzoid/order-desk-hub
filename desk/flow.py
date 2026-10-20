@@ -90,7 +90,7 @@ def case(hub) -> dict:
             except (DeskError, ERPError) as exc:      # checked before anything was sent
                 raise NotSent(f"{exc.code}: {exc.message}") from None
             try:
-                return desk.dispatch_draft(case_row["id"], requester=requester, expect=data, arguments=arguments, writer=writer)
+                return desk.dispatch_draft(case_row["id"], requester=requester, expect=data, arguments=arguments, writer=writer, work_item_id=item.id)
             except DeskError as exc:
                 raise NotSent(f"{exc.code}: {exc.message}") from None
             except NotDispatched as exc:
@@ -183,6 +183,7 @@ def case(hub) -> dict:
     def reconcile(arguments):
         current = writer.get(kind, arguments["erp_name"])
         if current["docstatus"] == 1:
+            current = desk.submission_readback(current, arguments.get("approved_content_digest"))
             return Reconciled(APPLIED, result=current, evidence={"erp_name": current["name"], "docstatus": 1})
         if current["docstatus"] == 0 and current["approval_digest"] == arguments["approval_digest"]:
             return Reconciled(SAFE_TO_RETRY, evidence={"docstatus": 0})
@@ -204,6 +205,7 @@ def case(hub) -> dict:
         if result["docstatus"] != 1:
             raise DeskError("reconcile_needed", f"{data['erp_name']} is not submitted in the ERP. Reconcile again.",
                             status=409)
+    result = desk.submission_readback(result, arguments.get("approved_content_digest"))
     return item.checkpoint("record", lambda: desk._summary(desk.record_submitted(
         case_row["id"], work_item_id=item.id, operation_id=None, view=_jsonable(result), actor=requester)))
 

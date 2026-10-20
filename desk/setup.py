@@ -14,7 +14,7 @@ from .paths import hub_key
 
 
 def preview(hub_dir, *, company: str, runtime: str, mailbox: str = "", client_id: str = "",
-            client_secret_ref: str = "", channel: str = "orders-mail", label_ids: list[str] | None = None) -> dict:
+            client_secret_ref: str = "", channel: str = "orders-mail", label_ids: list[str] | None = None, whole_inbox: bool = False) -> dict:
     hub = Path(hub_dir)
     if runtime not in ("claude-local", "codex-local"):
         raise StoreError("runtime_invalid", "Choose claude-local or codex-local.", status=422)
@@ -22,9 +22,16 @@ def preview(hub_dir, *, company: str, runtime: str, mailbox: str = "", client_id
         raise StoreError("channel_invalid", "Use a lowercase channel id.", status=422)
     if mailbox and ("@" not in mailbox or not client_id or not client_secret_ref.startswith(("secret:", "env:"))):
         raise StoreError("gmail_config_invalid", "Provide mailbox, customer-owned OAuth client id and a secret reference, never its value.", status=422)
-    labels = label_ids if label_ids is not None else ["INBOX"]
-    if not labels or any(not isinstance(label, str) or not label.strip() for label in labels):
-        raise StoreError("gmail_labels_invalid", "Choose existing Gmail label IDs, or explicitly review whole-INBOX ongoing retention.", status=422)
+    labels = label_ids if label_ids is not None else (["INBOX"] if whole_inbox else [])
+    if any(not isinstance(label, str) or not label.strip() for label in labels):
+        raise StoreError("gmail_labels_invalid", "Use one existing Gmail label ID.", status=422)
+    def check_scope(selected):
+        if len(selected) != 1:
+            raise StoreError("gmail_labels_invalid", "Choose exactly one existing Gmail label, or explicitly pass --whole-inbox. Multiple-label polling has different semantics and is not supported here.", status=422)
+        if selected == ["INBOX"] and not whole_inbox:
+            raise StoreError("gmail_scope_consent_required", "Whole-INBOX recurring retention requires explicit --whole-inbox consent. Historical keyword queries do not restrict future polling.", status=422)
+        if whole_inbox and selected != ["INBOX"]:
+            raise StoreError("gmail_labels_invalid", "Choose either one business label or --whole-inbox, not both.", status=422)
     files = {}
     rules = hub / RULE_FILE
     legacy = hub / LEGACY_RULE_FILE
@@ -63,6 +70,7 @@ def preview(hub_dir, *, company: str, runtime: str, mailbox: str = "", client_id
     if mailbox:
         rel = f"channels/{channel}.yaml"
         if not (hub / rel).exists():
+            check_scope(labels)
             files[rel] = yaml.safe_dump({"version": 1, "id": channel, "provider": "email", "enabled": True,
                 "workflow": "order_invoice_intake", "run_as": "workflow", "provider_config": {
                 "transport": "gmail", "mailbox": mailbox, "gmail": {"client_id": client_id,
@@ -75,6 +83,9 @@ def preview(hub_dir, *, company: str, runtime: str, mailbox: str = "", client_id
         actual = (yaml.safe_load(existing_channel.read_text()) or {}).get("provider_config", {})
         ongoing_scope["mailbox"] = actual.get("mailbox")
         ongoing_scope["label_ids"] = (actual.get("gmail") or {}).get("label_ids", ["INBOX"])
+    if ongoing_scope["mailbox"]:
+        check_scope(ongoing_scope["label_ids"])
+    ongoing_scope["selection"] = "whole_inbox_explicit" if whole_inbox else "one_existing_business_label"
     ongoing_scope["retention"] = "Selected ongoing message bodies and attachments are retained. Whole INBOX means all newly admitted INBOX mail, not just the historical keyword query."
     edits = []
     for rel, text in files.items():
@@ -84,7 +95,7 @@ def preview(hub_dir, *, company: str, runtime: str, mailbox: str = "", client_id
         old = path.read_text() if path.is_file() else None
         if old != text:
             edits.append({"path": rel, "before": old, "text": text})
-    digest = "sha256:" + hashlib.sha256(json.dumps(edits, sort_keys=True).encode()).hexdigest()
+    digest = "sha256:" + hashlib.sha256(json.dumps({"edits": edits, "ongoing_scope": ongoing_scope}, sort_keys=True).encode()).hexdigest()
     scope = "desk_source_" + hashlib.sha256((channel + (":" + ongoing_scope["mailbox"].lower() if ongoing_scope["mailbox"] else "")).encode()).hexdigest()[:16]
     return {"digest": digest, "edits": edits, "runtime": runtime, "erp_enabled": False,
             "source_grant": scope, "ongoing_scope": ongoing_scope, "costs": "Uses selected installed runtime authentication. Qualify unattended/hosted auth separately.",

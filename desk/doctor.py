@@ -180,23 +180,104 @@ def _load_env(hub: Path) -> None:
 def check_sdk(hub: Path) -> dict:
     import json
     import subprocess
+    from importlib import metadata
+    from urllib.parse import unquote, urlparse
+
     import hubzoid
+
     lock = hub / "hub.lock.json"
     if not lock.is_file():
         return _c("desk.sdk", "warn", "No SDK lock. Use the tested immutable SDK revision before qualification.")
-    expected = json.loads(lock.read_text())["sdk"]["commit"]
-    package = Path(hubzoid.__file__).resolve().parent
-    result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=package, capture_output=True, text=True)
-    actual = result.stdout.strip() if result.returncode == 0 else None
-    return _c("desk.sdk", "ok" if actual == expected else "fail", "Installed SDK matches the lock." if actual == expected
-              else "Installed SDK revision differs from hub.lock.json or cannot be verified.",
-              "Install the exact tested SDK commit, then rerun doctor. A moving branch is not a qualification pin.",
-              expected=expected, actual=actual)
+    try:
+        expected = json.loads(lock.read_text())["sdk"]["commit"]
+        if not isinstance(expected, str) or len(expected) != 40:
+            raise ValueError("invalid commit")
+    except (OSError, ValueError, KeyError, TypeError):
+        return _c("desk.sdk", "fail", "hub.lock.json does not contain a readable immutable SDK commit.",
+                  "Restore the reviewed SDK lock before qualification.")
+    recovery = "Install the exact tested SDK commit, then rerun doctor. A moving branch is not a qualification pin."
+
+    def unknown(reason: str) -> dict:
+        return _c("desk.sdk", "fail", "Installed SDK revision cannot be verified: " + reason, recovery,
+                  expected=expected, actual=None)
+
+    def verified(actual: str, source: str) -> dict:
+        return _c("desk.sdk", "ok" if actual == expected else "fail",
+                  "Installed SDK matches the lock." if actual == expected else
+                  "Installed SDK revision differs from hub.lock.json.", recovery,
+                  expected=expected, actual=actual, source=source)
+
+    try:
+        raw = metadata.distribution("hubzoid").read_text("direct_url.json")
+        direct = json.loads(raw) if raw else {}
+    except (metadata.PackageNotFoundError, OSError, ValueError, TypeError):
+        return unknown("installation metadata is missing or unreadable.")
+    if not isinstance(direct, dict):
+        return unknown("installation metadata is not an object.")
+    vcs = direct.get("vcs_info")
+    if isinstance(vcs, dict) and isinstance(vcs.get("commit_id"), str) and vcs["commit_id"]:
+        # pip's documented non-editable git install records the resolved
+        # commit here; its installed package need not contain a .git folder.
+        return verified(vcs["commit_id"], "pep610_vcs")
+    directory = direct.get("dir_info")
+    if not isinstance(directory, dict) or directory.get("editable") is not True:
+        return unknown("no VCS commit is recorded for this non-editable installation.")
+
+    try:
+        url = urlparse(str(direct.get("url") or ""))
+    except ValueError:
+        return unknown("the editable installation has an invalid source URL.")
+    if url.scheme != "file" or url.netloc not in ("", "localhost") or not url.path:
+        return unknown("the editable installation does not identify a local source directory.")
+    try:
+        source = Path(unquote(url.path)).resolve()
+        package = Path(hubzoid.__file__).resolve().parent
+    except (OSError, ValueError, TypeError):
+        return unknown("the editable SDK source directory cannot be resolved.")
+    # PYTHONPATH can deliberately select another SDK worktree while the
+    # environment retains editable-install metadata for its original checkout.
+    # Verify only the imported package's direct, own Git root, never a parent.
+    source = package.parent.parent if package.parent.name == "src" else package.parent
+    if not (source / ".git").exists() or not (source / "pyproject.toml").is_file():
+        return unknown("the imported editable SDK has no Git root of its own; an unrelated parent repository is not evidence.")
+    try:
+        top = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=source,
+                             capture_output=True, text=True, timeout=10)
+        if top.returncode != 0 or Path(top.stdout.strip()).resolve() != source:
+            return unknown("the editable SDK source is not the reported Git root.")
+        result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=source,
+                                capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return unknown("Git is unavailable or did not respond for the editable SDK source.")
+    if result.returncode != 0 or not result.stdout.strip():
+        return unknown("Git could not read the editable SDK commit.")
+    return verified(result.stdout.strip(), "editable_git")
+
+
+def check_storage(hub: Path) -> dict:
+    from .paths import check_data_root
+    from .service import Desk
+    from .store import StoreError
+    try:
+        check_data_root(hub)
+        desk = Desk(hub)
+        if not desk.erp_enabled():
+            for case in desk.store.all_cases(desk.hub_id):
+                if case.get("erp_name") or any(link["action"] in ("draft", "submit") and link["state"] in
+                                              ("requested", "dispatching", "ambiguous") for link in desk.store.links(case["id"])):
+                    return _c("desk.storage", "fail", "ERP addon is disabled while existing ERP cases or pending operations remain.",
+                              "Preserve the existing ERP workflow and reconcile it before an explicitly reviewed inbox-only conversion.")
+    except StoreError as exc:
+        return _c("desk.storage", "fail", exc.message, "Follow the reviewed data-root move in docs/qualification.md; preserve deployment-id and receipts.", code=exc.code)
+    return _c("desk.storage", "ok", "Existing desk/ERP identity is preserved in the configured SDK data root.")
 
 
 def run(hub: Path) -> dict:
     hub = Path(hub)
     _load_env(hub)
-    checks = [check_sdk(hub), check_rules(hub), *check_erp(hub), check_write_mode(hub), check_safety(hub), check_engine(),
+    storage = check_storage(hub)
+    if storage["status"] == "fail":
+        return {"checks": [check_sdk(hub), storage], "ok": False}
+    checks = [check_sdk(hub), storage, check_rules(hub), *check_erp(hub), check_write_mode(hub), check_safety(hub), check_engine(),
               check_channels(hub), check_parser(), check_model(hub)]
     return {"checks": checks, "ok": not any(c["status"] == "fail" for c in checks)}

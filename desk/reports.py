@@ -71,7 +71,7 @@ def build(records: list[dict], kind: str, *, start: str | None = None, end: str 
     if kind == "exceptions":
         # Include undated exceptions even under date filters: they cannot be
         # assigned to an accepted period and must not disappear from review.
-        selected = [r for r in rows if r.get("status") != "accepted" and
+        selected = [r for r in rows if r.get("status") not in ("accepted", "superseded") and
                     (r in filtered or not r.get("document_date"))]
         for r in selected:
             at = r.get("exception_created_at") or r.get("created_at")
@@ -107,7 +107,17 @@ def build(records: list[dict], kind: str, *, start: str | None = None, end: str 
                 if qty is not None and line.get("unit"):
                     qtys[line["unit"]] = qtys.get(line["unit"], Decimal(0)) + qty
             for c in r.get("approved_conversions") or []:
-                qty = number(r["lines"][c["line"]]["quantity"]) * Decimal(c["factor"])
+                index = c.get("line")
+                lines = r.get("lines") or []
+                valid = isinstance(index, int) and not isinstance(index, bool) and 0 <= index < len(lines)
+                line = lines[index] if valid else {}
+                qty, factor = number(line.get("quantity")), number(c.get("factor"))
+                if (not valid or ("item" in c and c["item"] != line.get("item")) or c.get("from") != line.get("unit")
+                        or not c.get("to") or qty is None or qty <= 0 or factor is None or factor <= 0):
+                    out.setdefault("conversion_exclusions", []).append({"record_id": r["record_id"], "line": index,
+                                                                       "reason": "conversion_no_longer_matches_line"})
+                    continue
+                qty *= factor
                 converted.append({"record_id": r["record_id"], "revision": r["revision"], "line": c["line"],
                                   "quantity": str(qty), "unit": c["to"]})
     out["totals_by_currency"] = {currency: {k: ({u: str(q) for u, q in v.items()} if isinstance(v, dict)

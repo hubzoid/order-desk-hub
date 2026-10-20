@@ -57,5 +57,5 @@ def test_sdk_rule_proposal_waits_for_authorized_activation_then_changes_next_rec
     extracted = extraction()
     extracted["reference"]["value"] = "HOLDOUT-1"
     result = d.stage_match(case["id"], extracted, elements=elements)
-    assert result["record"]["lines"][0]["item"] == "Internal Widget"
+    assert d.store.record(case["id"])["lines"][0]["item"] == "Internal Widget"
     assert result["record"]["rule_revision"] == d.record_rules().digest()

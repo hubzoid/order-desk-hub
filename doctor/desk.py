@@ -11,22 +11,30 @@ def _one(result):
     return {k: result.get(k) for k in ("status", "summary", "recovery", "details") if result.get(k) is not None}
 
 
+def _safe(fn, context):
+    from desk.store import StoreError
+    try:
+        return _one(fn(Path(context["hub_dir"])))
+    except StoreError as exc:
+        return {"status": "fail", "summary": exc.message, "details": {"code": exc.code}}
+
+
 def rules(context):
     from desk.doctor import check_rules
 
-    return _one(check_rules(Path(context["hub_dir"])))
+    return _safe(check_rules, context)
 
 
 def erp(context):
     from desk.doctor import check_erp
 
-    return _one(check_erp(Path(context["hub_dir"]))[0])
+    return _safe(lambda hub: check_erp(hub)[0], context)
 
 
 def write_mode(context):
     from desk.doctor import check_write_mode
 
-    return _one(check_write_mode(Path(context["hub_dir"])))
+    return _safe(check_write_mode, context)
 
 
 def approval_card(context):
@@ -57,3 +65,9 @@ def sdk(context):
     from desk.doctor import check_sdk
 
     return _one(check_sdk(Path(context["hub_dir"])))
+
+
+def storage(context):
+    from desk.doctor import check_storage
+
+    return _one(check_storage(Path(context["hub_dir"])))

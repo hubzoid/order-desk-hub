@@ -23,3 +23,9 @@ Blast radius: desk intake and presentation, optional ERP rechecks and canonical 
 - Doctor reports ok with the exact SDK pin and valid ERP-free rules. It warns that HUBZOID_SCHEDULES must be set and reports that no Gmail intake is connected in this checkout. No model/login/provider qualification is implied.
 - Initial validation failures were environment/fixture setup: one run used an environment missing reportlab; a sample-engine fixture copied the new ERP-off setting. The correct environment and explicit sample fixture passed the checks above.
 - Independent Claude Opus 5.5 will review this entire hub patch plus the bounded Gmail SDK dependency, with author dispositions below.
+
+## Post-review validation
+
+Independent Claude Opus 5.5 reviewed the entire hub implementation at 94a0bba plus SDK f99a224. Necessary author fixes are documented in docs/review-dispositions-2026-10-20.md. Final model-free suite: 181 passed, one live-ERP skip, 83.76 seconds, including all nine local workflow-engine cases. Focused setup/finance/access/SDK/export checks passed; actual signed chat CSV export is covered. Canonical ERP identity preservation is committed separately as a3c3993135ebffa2c291dac3a7780be46f7bf796 and mirrored by Customer Desk. SDK dependency: https://github.com/hubzoid/hubzoid/pull/109. No merge or real-provider readiness is claimed.
+
+The durable invoice-capacity fence and uncertain-write recovery are consequential financial changes. Under the B034 exception for a risky fix, one narrow follow-up review covers those changes after these author fixes; this does not reopen the full implementation or optional scope.
