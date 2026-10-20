@@ -107,6 +107,59 @@ def _table(data):
     typer.echo("  ".join(f"{k}: {v}" for k, v in sorted(data["counts"].items())))
 
 
+@app.command("setup")
+def setup_cmd(hub: Path = HUB, company: str = typer.Option(..., "--company"),
+              runtime: str = typer.Option("claude-local", "--runtime"), mailbox: str = typer.Option("", "--mailbox"),
+              client_id: str = typer.Option("", "--client-id"), secret_ref: str = typer.Option("", "--client-secret-ref"),
+              channel: str = typer.Option("orders-mail", "--channel"),
+              gmail_labels: list[str] = typer.Option(None, "--gmail-label", help="Repeat existing Gmail label IDs for recurring intake. Default INBOX means whole-INBOX retention."), apply_digest: str = typer.Option("", "--apply"),
+              as_json: bool = typer.Option(False, "--json")):
+    """Preview ERP-free setup. Apply only the exact reviewed digest on a trusted local checkout."""
+    from . import setup
+    def go():
+        plan = setup.preview(hub, company=company, runtime=runtime, mailbox=mailbox, client_id=client_id,
+                             client_secret_ref=secret_ref, channel=channel, label_ids=gmail_labels)
+        return setup.apply(hub, plan, apply_digest) if apply_digest else plan
+    _run(as_json, go)
+
+
+@app.command("report")
+def report_cmd(hub: Path = HUB, kind: str = typer.Argument(..., help="register, orders, invoices or exceptions"),
+               start: str = typer.Option(None, "--start"), end: str = typer.Option(None, "--end"),
+               timezone: str = typer.Option("UTC", "--timezone"), party: str = typer.Option(None, "--party"),
+               csv_output: bool = typer.Option(False, "--csv"), as_json: bool = typer.Option(False, "--json")):
+    """Report accepted records and visible exceptions without ERP. End date is exclusive."""
+    def go():
+        d = _desk(hub)
+        return d.report(_reader(), kind, start=start, end=end, tz=timezone, party=party)
+    if csv_output:
+        if kind != "register":
+            _fail(DeskError("report_invalid", "Only the register has a CSV export. Use JSON for grouped reports.", status=422), as_json)
+        from .reports import csv_text
+        try:
+            typer.echo(csv_text(go()), nl=False)
+        except StoreError as exc:
+            _fail(exc, as_json)
+    else:
+        _run(as_json, go)
+
+
+@app.command("review-record")
+def review_record_cmd(hub: Path = HUB, case: str = CASE,
+                      expected_revision: int = typer.Option(..., "--expected-revision"),
+                      changes: str = typer.Option("{}", "--changes", help="JSON document fields, never shared rules"),
+                      accept: bool = typer.Option(False, "--accept"), as_json: bool = typer.Option(False, "--json")):
+    """Correct one normalized record, or accept it after resolving every exception."""
+    def go():
+        d = _desk(hub)
+        try:
+            edits = json.loads(changes)
+        except ValueError:
+            raise DeskError("invalid_json", "--changes must be a JSON object.", status=422) from None
+        return d.review_record(_person(d), case, expected_revision=expected_revision, changes=edits, accept=accept)
+    _run(as_json, go)
+
+
 @app.command()
 def doctor(hub: Path = HUB, as_json: bool = typer.Option(False, "--json")):
     """Every desk prerequisite at once: rules, ERP, write mode, channels, model access."""
@@ -138,6 +191,11 @@ def sample_install(hub: Path = HUB, quarantine: bool = typer.Option(False, "--qu
 
     def go():
         d = _desk(hub)
+        import yaml
+        settings_file = d.hub_dir / "hub.settings.yaml"
+        settings = yaml.safe_load(settings_file.read_text()) if settings_file.is_file() else {"version": 1, "values": {}}
+        settings.setdefault("values", {})["DESK_ERP_ENABLED"] = True
+        settings_file.write_text(yaml.safe_dump(settings, sort_keys=False))
         out = {"synthetic": True}
         if erp_config.current(d.hub_dir, d.erp.state_dir) is None:
             cfg = erp_config.ERPConfig.model_validate(erp_config.SAMPLE_DEFAULT)
@@ -410,7 +468,8 @@ def preview(hub: Path = HUB, file: Path = typer.Argument(...), party: str = type
         return {"work_item": {"id": item["id"], "state": item["state"], "error": item.get("error")},
                 "state": result.get("state"), "questions": result.get("questions"),
                 "payload": (prop or {}).get("payload"), "evidence": (prop or {}).get("evidence"),
-                "erp_writes": 0, "validation_level": "local_and_reads"}
+                "record": d.store.record(case["id"]) if case else None,
+                "erp_writes": 0, "validation_level": "source_validation" if not d.erp_enabled() else "local_and_reads"}
     _run(as_json, go)
 
 
@@ -441,6 +500,9 @@ def rules_check(hub: Path = HUB, as_json: bool = typer.Option(False, "--json")):
 
     def go():
         d = _desk(hub)
+        if not d.erp_enabled():
+            r = d.record_rules()
+            return {"valid": True, "digest": r.digest(), "mode": "records", "rules": r.model_dump()}
         try:
             r = d.rules()
         except policy.PolicyError as exc:

@@ -51,3 +51,9 @@ def model(context):
     from desk.doctor import check_model
 
     return _one(check_model(Path(context["hub_dir"])))
+
+
+def sdk(context):
+    from desk.doctor import check_sdk
+
+    return _one(check_sdk(Path(context["hub_dir"])))

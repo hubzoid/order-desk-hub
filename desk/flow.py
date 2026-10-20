@@ -90,7 +90,9 @@ def case(hub) -> dict:
             except (DeskError, ERPError) as exc:      # checked before anything was sent
                 raise NotSent(f"{exc.code}: {exc.message}") from None
             try:
-                return writer.create_draft(arguments["kind"], arguments["payload"], arguments["external_ref"])
+                return desk.dispatch_draft(case_row["id"], requester=requester, expect=data, arguments=arguments, writer=writer)
+            except DeskError as exc:
+                raise NotSent(f"{exc.code}: {exc.message}") from None
             except NotDispatched as exc:
                 raise NotSent(f"{exc.code}: {exc.message}") from None
             except Refused as exc:

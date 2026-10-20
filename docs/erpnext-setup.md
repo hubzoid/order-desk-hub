@@ -30,7 +30,7 @@ hubzoid-erp bootstrap verify .
 Credentials go into Hubzoid's secret store by a credential administrator, never into a file or a chat:
 
 ```bash
-hubzoid secrets set . --ref secret:hub/<hub>/erpnext-read --stdin --apply
+hubzoid secrets set . --ref secret:hub/<hub>/erpnext-read --stdin
 ```
 
 `connectors/erpnext.yaml`:

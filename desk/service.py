@@ -10,8 +10,8 @@ Who may do what (Hubzoid grants, `hubzoid grant EMAIL PERMISSION HUB`):
 | `desk_submit` | ask for submission of an ERP draft they own (approve mode only) |
 | `desk_manage` | reassign, bind senders, pause intake, collect reconciliation evidence |
 
-A hub administrator (`manage_access`) holds all four. Approving a submission
-is never a grant: only the person who asked for it approves the exact draft
+Access administrators assign these explicitly. Administration alone does not
+supply data/source grants. Approving a submission is never a grant: only the person who asked for it approves the exact draft
 (the SDK's work-item approval). The local operator in local owner mode is the
 hub owner.
 """
@@ -33,6 +33,8 @@ from . import documents as docs_lib
 from . import extract as extract_lib
 from . import policy as policy_lib
 from . import propose as propose_lib
+from . import records as records_lib
+from . import reports as reports_lib
 from .paths import hub_key, output_dir
 from .store import OPEN, Store, StoreError, case_number
 
@@ -43,6 +45,7 @@ CASE_WORKFLOW = "order_invoice_case"
 PERMISSIONS = ("desk_view", "desk_operate", "desk_submit", "desk_manage")
 SETTING_DEFAULTS = {
     "DESK_SOURCES": ["upload", "email", "whatsapp"], "DESK_INTAKE_ENABLED": True,
+    "DESK_ERP_ENABLED": None,
     "DESK_POLICY_FILES": [policy_lib.ORDER_POLICY, policy_lib.INVOICE_POLICY],
     "DESK_ALIASES_FILE": policy_lib.ALIASES, "DESK_MAX_FILE_BYTES": 20971520, "DESK_MAX_PAGES": 100,
     "DESK_MAX_LINES": 200, "DESK_PARSE_TIMEOUT_SECONDS": 180,
@@ -64,9 +67,125 @@ class Desk:
         self.hub_dir = Path(hub_dir)
         self.hub_id = hub_key(self.hub_dir)
         self.store = Store(self.hub_dir)
-        self.erp = erp or ERPService.for_hub(self.hub_dir)
+        self._erp = erp
         self._fetch = fetch            # tests: callable(attachment dict) -> bytes
         self._grants = grants          # tests: callable(actor, permission) -> bool
+
+    @property
+    def erp(self):
+        if self._erp is None:
+            self._erp = ERPService.for_hub(self.hub_dir)
+        return self._erp
+
+    def erp_enabled(self) -> bool:
+        import yaml
+        path = self.hub_dir / "hub.settings.yaml"
+        values = (yaml.safe_load(path.read_text()) or {}).get("values", {}) if path.is_file() else {}
+        if "DESK_ERP_ENABLED" in values:
+            return values["DESK_ERP_ENABLED"] is True
+        # Preserve explicit connectors on installations predating this setting.
+        return (self.hub_dir / "connectors/erpnext.yaml").is_file()
+
+    def source_scope(self, channel: str) -> str:
+        import hashlib
+        account = ""
+        try:
+            from hubzoid.channels.config import active
+            conn = active(self.hub_dir, channel)
+            account = getattr(conn.settings, "mailbox", "").lower()
+        except Exception:
+            pass
+        return "desk_source_" + hashlib.sha256((channel + (":" + account if account else "")).encode()).hexdigest()[:16]
+
+    def record_rules(self):
+        try:
+            return records_lib.load_rules(self.hub_dir)
+        except (ValueError, OSError) as exc:
+            raise DeskError("record_rules_invalid", str(exc), status=422) from None
+
+    def _visible(self, actor: str, case: dict) -> bool:
+        scope = (case.get("sender_json") or {}).get("source_scope")
+        owner = (case.get("sender_json") or {}).get("uploaded_by")
+        return not scope or owner == actor or self.can(actor, scope)
+
+    def _require_visible(self, actor: str, case: dict):
+        if not self._visible(actor, case):
+            raise DeskError("permission_denied", "This source is outside your granted mailbox/upload scope.", status=403)
+
+    def report(self, actor: str, kind: str, **filters) -> dict:
+        self.require(actor, "desk_view", "Reading desk reports")
+        rows = []
+        for row in self.store.records(self.hub_id):
+            case = self.store.get_case(row["record_id"])
+            if case and self._visible(actor, case):
+                rows.append(row)
+        try:
+            return reports_lib.build(rows, kind, **filters)
+        except (ValueError, KeyError) as exc:
+            raise DeskError("report_invalid", str(exc), status=422) from None
+
+    def review_record(self, actor: str, case_id: str, *, expected_revision: int, changes: dict | None = None,
+                      accept: bool = False) -> dict:
+        self.require(actor, "desk_operate", "Reviewing a record")
+        case = self.store.require_case(case_id, self.hub_id)
+        self._require_visible(actor, case)
+        if case.get("erp_name"):
+            raise DeskError("invalid_state", "A linked ERP document is reviewed in ERP, without rewriting its source record.", status=409)
+        row = self.store.record(case["id"])
+        if row is None:
+            raise DeskError("not_found", "No normalized record yet. Restart the intake work item.", status=404)
+        if not isinstance(changes or {}, dict):
+            raise DeskError("record_field_invalid", "Corrections must be a JSON object.", status=422)
+        allowed = {"party", "reference", "document_date", "currency", "stated_total", "stated_tax", "tax_basis", "lines", "source_acknowledgements"}
+        if set(changes or {}) - allowed:
+            raise DeskError("record_field_invalid", "Only evidenced document fields can be corrected. Rules need a reviewed Hub change.", status=422)
+        edits = dict(changes or {})
+        acknowledgements = edits.pop("source_acknowledgements", [])
+        if not isinstance(acknowledgements, list) or set(acknowledgements) - set(row.get("source_problems") or []):
+            raise DeskError("record_field_invalid", "Acknowledge only the source problems shown on this record.", status=422)
+        current_rules = self.record_rules()
+        if row.get("rule_revision") != current_rules.digest():
+            raise DeskError("rules_changed", "Rules changed. Rerun this case for a fresh source preview before reviewing.", status=409)
+        row = dict(row, **edits, status="unreviewed")
+        row["case_changes"] = {**row.get("case_changes", {}), **edits}
+        if row.get("duplicate_of"):
+            other = self.store.record(row["duplicate_of"])
+            if other and any(other.get(k) != row.get(k) for k in ("party", "reference", "company", "document_kind")):
+                row.pop("duplicate_of", None)
+        row["source_acknowledgements"] = sorted(set(row.get("source_acknowledgements") or []) | set(acknowledgements))
+        row["source_problems"] = [p for p in row.get("source_problems") or [] if p not in acknowledgements]
+        row = records_lib.validate(row, self.record_rules())
+        if accept and row["exceptions"]:
+            raise DeskError("record_has_exceptions", "Resolve every exception before accepting.", status=409,
+                            exceptions=row["exceptions"])
+        if accept:
+            row["status"] = "accepted"
+        row["correction_reason"] = "human reviewed case correction"
+        with self.store.tx() as conn:
+            row = self.store.save_record(case["id"], row, actor=actor, expected_revision=expected_revision, conn=conn)
+            if not self.erp_enabled():
+                questions = [{"code": e, "field": e, "message": e.replace("_", " ")} for e in row["exceptions"]]
+                self.store.update_case(case["id"], conn=conn, state="needs_clarification" if questions else "done" if row["status"] == "accepted" else "needs_owner",
+                                       question_json=questions, business_reference=row.get("reference"),
+                                       event="record.reviewed", actor=actor)
+        return row
+
+    def propose_record_rules(self, actor: str, *, rules: dict, reason: str) -> dict:
+        self.require(actor, "desk_manage", "Proposing shared record rules")
+        from hubzoid.hub_changes import service as changes
+        try:
+            parsed = records_lib.check_rules(records_lib.RecordRules.model_validate(rules), self.hub_dir)
+        except ValueError as exc:
+            raise DeskError("record_rules_invalid", str(exc), status=422) from None
+        path = self.hub_dir / records_lib.RULE_FILE
+        new = records_lib.rule_text(parsed)
+        edit = {"path": records_lib.RULE_FILE}
+        if path.is_file():
+            edit.update(old_text=path.read_text(), new_text=new)
+        else:
+            edit["content"] = new
+        return changes.public(changes.propose(self.hub_dir, title="Review Order Desk rules", actor=actor,
+                             via="tool", present=False, reason=reason, edits=[edit]))
 
     # -- settings, rules, permissions ---------------------------------------------------------------
     def settings(self) -> dict:
@@ -108,8 +227,7 @@ class Desk:
             from hubzoid.access import store_for
 
             gs = store_for(self.hub_dir)
-            return bool(gs.can(actor, self.hub_id, permission) or gs.can(actor, self.hub_id, "manage_access")
-                        or gs.can(actor, "*", "manage_access"))
+            return bool(gs.can(actor, self.hub_id, permission))
         except Exception:  # noqa: BLE001 - unreadable access data grants nothing
             return False
 
@@ -187,16 +305,18 @@ class Desk:
 
     def open_case(self, payload: dict, *, work_item_id: str | None, preview: bool = False) -> tuple[dict, bool]:
         source, event = self._source_event(payload)
-        cfg = self.erp.config()
-        ptype, pid, bound = self._party_from(payload, cfg.company)
+        company = self.erp.config().company if self.erp_enabled() else self.record_rules().company
+        ptype, pid, bound = self._party_from(payload, company)
         sender = payload.get("sender") or {}
         return self.store.create_case(
             hub_id=self.hub_id, source=source, source_event_id=event, intake_id=payload.get("intake_id"),
             triage_work_item_id=work_item_id, channel=payload.get("channel") or source,
             sender_json={"external_id": sender.get("external_id"),
                          "display_name": sender.get("display_name") or sender.get("display"),
-                         "provider": payload.get("provider")},
-            received_at=self._received_at(payload), company=cfg.company, party_type=ptype,
+                         "provider": payload.get("provider"), "uploaded_by": payload.get("uploaded_by"),
+                         "source_scope": self.source_scope(payload.get("channel") or source)
+                         if not self.erp_enabled() else None},
+            received_at=self._received_at(payload), company=company, party_type=ptype,
             party_id=pid, party_bound_by=bound, preview=1 if preview else 0)
 
     def _attachment_bytes(self, att: dict) -> bytes:
@@ -303,6 +423,38 @@ class Desk:
             self._error(case, "extraction_invalid", f"The extractor's answer was not usable: {exc}")
             return self._summary(self.store.get_case(case_id))
         verified = extract_lib.verify(ex, elements)
+        if reason == "triage" and self.store.record(case_id) and not self.erp_enabled():
+            return self._summary(case)
+        rr = self.record_rules()
+        normalized = records_lib.from_extraction(verified.extraction, elements, case=case, rules=rr,
+                                                  source_problems=verified.problems,
+                                                  changes=(self.store.record(case_id) or {}).get("case_changes") if reason != "triage" else None)
+        failed = [d for d in self.store.documents(case_id) if d["parse_status"] == "failed"]
+        if failed:
+            normalized["source_problems"].append("attachment_unreadable")
+        # Ambiguous multiple documents are reviewed, never silently added into
+        # one accepted invoice. The originals remain independently inspectable.
+        attachments = [d for d in self.store.documents(case_id) if d.get("ordinal", 0) > 0]
+        if len(attachments) > 1:
+            normalized["source_problems"].append("multiple_documents_need_review")
+        normalized = records_lib.validate(normalized, rr)
+        if normalized.get("reference") and normalized.get("party"):
+            for other in reports_lib.latest(self.store.records(self.hub_id)):
+                if other["record_id"] != case_id and all(other.get(k) == normalized.get(k)
+                    for k in ("company", "document_kind", "party", "reference")):
+                    normalized["duplicate_of"] = other["record_id"]
+                    normalized = records_lib.validate(normalized, rr)
+                    break
+        if not self.erp_enabled():
+            questions = [{"code": e, "message": e.replace("_", " "), "field": e} for e in normalized["exceptions"]]
+            with self.store.tx() as conn:
+                self.store.save_record(case_id, normalized, actor=actor, conn=conn)
+                self.store.update_case(case_id, expected_revision=expected_revision, conn=conn,
+                                       state="needs_clarification" if questions else "done" if normalized["status"] == "accepted" else "needs_owner",
+                                       kind=ex.document_kind, business_reference=normalized.get("reference"),
+                                       question_json=questions, policy_digest=rr.digest(), event="record.normalized", actor=actor)
+            return self._summary(self.store.get_case(case_id))
+        self.store.save_record(case_id, normalized, actor=actor)
         try:
             rules = self.rules()
         except policy_lib.PolicyError as exc:
@@ -402,6 +554,13 @@ class Desk:
     # -- reading ----------------------------------------------------------------------------------------
     def _summary(self, case: dict) -> dict:
         prop = self.store.proposal(case["id"], case.get("proposal_revision")) if case.get("proposal_revision") else None
+        record = self.store.record(case["id"])
+        if case.get("erp_name"):
+            total = ((case.get("flags_json") or {}).get("erp_totals") or {}).get("grand_total")
+        elif record is not None:
+            total = record.get("stated_total")
+        else:
+            total = ((prop or {}).get("evidence") or {}).get("totals", {}).get("computed")
         return {
             "case_id": case["id"], "number": case_number(case), "state": case["state"], "kind": case.get("kind"),
             "party": {"type": case.get("party_type"), "id": case.get("party_id")}, "owner": case.get("owner"),
@@ -410,9 +569,11 @@ class Desk:
             "erp": {"doctype": case.get("erp_doctype"), "name": case.get("erp_name"),
                     "docstatus": case.get("erp_docstatus"), "modified": case.get("erp_modified"),
                     "approval_digest": case.get("approval_digest")} if case.get("erp_name") else None,
+            "needs_review": bool((case.get("flags_json") or {}).get("needs_review")),
             "duplicate_of": case.get("duplicate_of"), "error": {"code": case["error_code"], "message":
                                                                 case.get("error_message")} if case.get("error_code") else None,
-            "total": (prop or {}).get("evidence", {}).get("totals", {}).get("computed") if prop else None,
+            "total": total, "record": record,
+            "next_action": "Review the submitted document in ERP. Do not rerun or repost this case." if case["state"] == "needs_review" else None,
             "digest": (prop or {}).get("digest"), "received_at": case.get("received_at"),
             "channel": case.get("channel"), "sender": (case.get("sender_json") or {}).get("external_id"),
             "updated_at": case["updated_at"], "warnings": (case.get("flags_json") or {}).get("warnings", []),
@@ -422,13 +583,22 @@ class Desk:
              before: int | None = None) -> dict:
         self.require(actor, "desk_view", "Seeing the queue")
         rows = self.store.list_cases(self.hub_id, state=state, owner=actor if mine else None, limit=limit, before=before)
+        full_page = len(rows) == max(1, min(limit, 100))
+        last_number = rows[-1]["number"] if rows else None
+        rows = [r for r in rows if self._visible(actor, r)]
         out = [self._summary(self.sync(r)) for r in rows]
-        nxt = rows[-1]["number"] if len(rows) == max(1, min(limit, 100)) else None
-        return {"cases": out, "next_before": nxt, "counts": {k: v["count"] for k, v in self.store.counts(self.hub_id).items()}}
+        nxt = last_number if full_page else None
+        counts = {}
+        for r in self.store.all_cases(self.hub_id):
+            if self._visible(actor, r):
+                counts[r["state"]] = counts.get(r["state"], 0) + 1
+        return {"cases": out, "next_before": nxt, "counts": counts}
 
     def show(self, actor: str, case_id: str) -> dict:
         self.require(actor, "desk_view", "Seeing a case")
-        case = self.sync(self.store.require_case(case_id, self.hub_id))
+        case = self.store.require_case(case_id, self.hub_id)
+        self._require_visible(actor, case)
+        case = self.sync(case)
         out = self._summary(case)
         prop = self.store.proposal(case["id"], case.get("proposal_revision")) if case.get("proposal_revision") else None
         out["documents"] = [{k: d.get(k) for k in ("label", "filename", "media_type", "sha256", "size", "parser",
@@ -443,12 +613,18 @@ class Desk:
                          for e in self.store.events(case["id"])]
         out["actions"] = self.actions(actor, case)
         out["write_mode"] = self.write_mode()
-        out["backend"] = self.erp.config().backend
-        out["synthetic"] = self.erp.config().synthetic
+        if out.get("record"):
+            out["questions"] = out["record"].get("exceptions") if not self.erp_enabled() else out["questions"]
+        out["backend"] = self.erp.config().backend if self.erp_enabled() else "records"
+        out["synthetic"] = self.erp.config().synthetic if self.erp_enabled() else False
         return out
 
     def actions(self, actor: str, case: dict) -> list[str]:
+        if not self.erp_enabled():
+            return ["review_record"] if self.can(actor, "desk_operate") and self._visible(actor, case) else []
         s, own = case["state"], case.get("owner")
+        if s == "needs_review":
+            return []  # submitted already: the human reviews in ERP, never reruns/reposts
         acts = []
         if s in ("needs_owner", "needs_clarification") and not own and self.can(actor, "desk_operate"):
             acts.append("claim")
@@ -470,6 +646,8 @@ class Desk:
         return acts
 
     def write_mode(self) -> str:
+        if not self.erp_enabled():
+            return "off"
         try:
             from hubzoid.work_items import config as wi_config
 
@@ -562,10 +740,10 @@ class Desk:
 
     # -- corrections --------------------------------------------------------------------------------------
     CORRECTABLE = ("party", "kind", "reference", "transaction_date", "delivery_date", "bill_date", "due_date",
-                   "bill_to_confirmed", "purchase_order")
+                   "bill_to_confirmed", "purchase_order", "tax")
     _LINE_PATH = re.compile(r"^lines\[([1-9][0-9]{0,2})\]\.(item_code|qty|uom|rate|po_detail|include|source)$")
     _ACK_PATH = re.compile(r"^ack\.(uncovered\.E[0-9]+|unreadable\.[0-9]+)$")
-    _FIXED_VALUES = {"include": ("yes", "no"), "bill_to_confirmed": ("yes", "no")}
+    _FIXED_VALUES = {"include": ("yes", "no"), "bill_to_confirmed": ("yes", "no"), "tax": ("erp_template_checked",)}
 
     def correct(self, actor: str, case_id: str, *, expected_revision: int, fields: list[dict]) -> dict:
         """Case corrections: a new proposal revision with the given values
@@ -632,13 +810,17 @@ class Desk:
         """Match the same document again with the current rules (after an
         alias or policy change). The extraction and sources are kept."""
         case = self.store.require_case(case_id, self.hub_id)
-        if case["state"] not in ("needs_owner", "needs_clarification", "draft_ready", "duplicate"):
+        if case["state"] not in (("needs_owner", "needs_clarification", "draft_ready", "duplicate") + (("done",) if not case.get("erp_name") else ())):
             raise DeskError("invalid_state", f"{case_number(case)} is {case['state']}. A case with an ERP draft is "
                             "never re-proposed silently: change the draft in the ERP.", status=409)
         if case.get("owner") and case["owner"] != actor and not actor.startswith("cli:"):
             raise DeskError("permission_denied", "Only the case owner can rerun it.", status=403)
         self.require(actor, "desk_operate", "Rerunning a case")
+        self._require_visible(actor, case)
         prop = self.store.proposal(case["id"])
+        record = self.store.record(case["id"])
+        if prop is None and record:
+            prop = {"extraction": record["extraction"], "corrections": {}}
         if prop is None:
             raise DeskError("invalid_state", "This case has no extraction yet. Restart its triage work item.", status=409)
         self._cancel_pending(case, actor, "rerun")
@@ -659,6 +841,9 @@ class Desk:
     def request_draft(self, actor: str, case_id: str, *, expected_revision: int, digest: str) -> dict:
         case = self.store.require_case(case_id, self.hub_id)
         self._owner(actor, case, "Saving an ERP draft")
+        prop_now = self.store.proposal(case["id"])
+        if prop_now and prop_now.get("policy_digest") != self.rules().digest:
+            raise DeskError("rules_changed", "Rules changed since preview. Review a fresh proposal before this action.", status=409)
         mode = self.write_mode()
         if mode == "off":
             raise DeskError("write_mode_off", "ERP writes are off for this hub. Set erp.submit to draft in "
@@ -793,6 +978,22 @@ class Desk:
                                 + "; ".join(problems) + ". Rerun the case to propose against the ERP as it is now.",
                                 status=409, problems=problems)
 
+    def dispatch_draft(self, case_id: str, *, requester: str, expect: dict, arguments: dict, writer=None):
+        """Serialize receipt recheck and draft creation across this deployment.
+
+        SQLite's write lock is process-safe and released after a crash. This
+        covers concurrent desk workers sharing the data root. Other ERP
+        clients need the ERP's own validation and are not covered by this lock.
+        """
+        writer = writer or self.erp.writer()
+        with self.store.tx() as conn:
+            unresolved = conn.execute("SELECT id FROM desk_cases WHERE hub_id=? AND state='ambiguous' "
+                                      "AND kind='purchase_invoice' AND id<>? LIMIT 1", (self.hub_id, case_id)).fetchone()
+            if arguments["kind"] == "purchase_invoice" and unresolved:
+                raise DeskError("receipt_capacity_uncertain", "Reconcile the uncertain invoice before reserving more receipt capacity.", status=409)
+            self.recheck(case_id, action="draft", requester=requester, expect=expect, payload=arguments["payload"])
+            return writer.create_draft(arguments["kind"], arguments["payload"], arguments["external_ref"])
+
     def submission_arguments(self, case: dict, view: dict) -> dict:
         """The exact content a person approves: everything the Console shows
         under 'Exactly what will be sent'."""
@@ -810,7 +1011,9 @@ class Desk:
         case = self.store.update_case(
             case_id, state="erp_draft_saved", erp_doctype=view["doctype"], erp_name=view["name"],
             erp_docstatus=view["docstatus"], erp_modified=view["erp_modified"], approval_digest=view["approval_digest"],
-            content_digest=view["content_digest"], differences_json=diffs or None, error_code=None, error_message=None,
+            content_digest=view["content_digest"], differences_json=diffs or None,
+            flags_json={**(self.store.get_case(case_id).get("flags_json") or {}), "erp_totals": view.get("totals")},
+            error_code=None, error_message=None,
             event="draft.created", actor=actor,
             payload={"erp_name": view["name"], "deduplicated": view.get("deduplicated"), "differences": len(diffs)})
         self.store.link(case_id, work_item_id=work_item_id, action="draft", operation_id=operation_id,
@@ -822,9 +1025,14 @@ class Desk:
         return self.store.update_case(case_id, state=state, event=event, actor=actor, **fields)
 
     def record_submitted(self, case_id: str, *, work_item_id: str, operation_id: str | None, view: dict, actor: str):
-        case = self.store.update_case(case_id, state="done", erp_docstatus=view["docstatus"],
+        case = self.store.update_case(case_id, state="needs_review" if view.get("needs_review") else "done", erp_doctype=view["doctype"], erp_name=view["name"],
+                                      approval_digest=view["approval_digest"], erp_docstatus=view["docstatus"],
                                       erp_modified=view["erp_modified"], content_digest=view["content_digest"],
-                                      error_code=None, error_message=None,     # a settled lost answer or denial
+                                      differences_json=[{"code": "submitted_content_changed"}] if view.get("needs_review") else None,
+                                      flags_json={**(self.store.get_case(case_id).get("flags_json") or {}),
+                                                  "erp_totals": view.get("totals"), "needs_review": bool(view.get("needs_review"))},
+                                      error_code="post_submit_review_required" if view.get("needs_review") else None,
+                                      error_message="The submitted ERP content changed. Review the authoritative totals." if view.get("needs_review") else None,
                                       event="document.submitted", actor=actor,
                                       payload={"erp_name": view["name"], "docstatus": view["docstatus"]})
         self.store.link(case_id, work_item_id=work_item_id, action="submit", operation_id=operation_id,
@@ -970,6 +1178,8 @@ class Desk:
 
     def cancel(self, actor: str, case_id: str, *, expected_revision: int, reason: str) -> dict:
         case = self.store.require_case(case_id, self.hub_id)
+        if case["state"] == "needs_review" or case.get("erp_docstatus") == 1:
+            raise DeskError("review_in_erp", "This document is submitted. Review it in ERP, never cancel/repost it from this case.", status=409)
         if case.get("owner") != actor:
             self.require(actor, "desk_manage", "Cancelling someone else's case")
         if case["state"] in ("waiting_approval", "submitting"):
@@ -984,18 +1194,23 @@ class Desk:
     # -- admin ---------------------------------------------------------------------------------------------------
     def health(self, actor: str) -> dict:
         self.require(actor, "desk_view", "Seeing desk health")
-        counts = self.store.counts(self.hub_id)
+        counts = {}
+        for case in self.store.all_cases(self.hub_id):
+            if self._visible(actor, case):
+                entry = counts.setdefault(case["state"], {"count": 0, "oldest": case["created_at"]})
+                entry["count"] += 1
+                entry["oldest"] = min(entry["oldest"], case["created_at"])
         import time
 
         now = time.time()
         queue = {state: {"count": v["count"], "oldest_age_seconds": int(now - v["oldest"]) if v["oldest"] else None}
                  for state, v in counts.items()}
-        cases = self.store.list_cases(self.hub_id, limit=100)
+        cases = [c for c in self.store.list_cases(self.hub_id, limit=100) if self._visible(actor, c)]
         duplicates = [self._summary(c) for c in cases if c["state"] == "duplicate"]
         ambiguous = [self._summary(c) for c in cases if c["state"] == "ambiguous"]
         errors = [self._summary(c) for c in cases if c["state"] == "error"]
         try:
-            erp = self.erp.doctor(probe_resources=False)
+            erp = self.erp.doctor(probe_resources=False) if self.erp_enabled() else {"backend": "records", "ready_read": True, "ready_write": False, "ready_submit": False}
             connection = {"backend": erp.get("backend"), "ready_read": erp["ready_read"], "ready_write": erp["ready_write"],
                           "ready_submit": erp["ready_submit"]}
         except Exception as exc:  # noqa: BLE001

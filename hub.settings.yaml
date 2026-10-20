@@ -1,5 +1,6 @@
 version: 1
 values:
+  DESK_ERP_ENABLED: false
   DESK_SOURCES: [upload, email, whatsapp]
   DESK_INTAKE_ENABLED: true
   DESK_POLICY_FILES: [knowledge/order-policy.md, knowledge/invoice-policy.md]

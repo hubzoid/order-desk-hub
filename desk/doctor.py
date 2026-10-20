@@ -25,6 +25,13 @@ def check_rules(hub: Path) -> dict:
     from erp.service import ERPService
 
     from . import policy
+    from .service import Desk
+    if not Desk(hub).erp_enabled():
+        try:
+            rules = Desk(hub).record_rules()
+            return _c("desk.rules", "ok", "ERP-free record rules valid.", digest=rules.digest())
+        except Exception as exc:
+            return _c("desk.rules", "fail", str(exc), "Review knowledge/record-rules.md.")
 
     try:
         company = ERPService.for_hub(hub).config().company
@@ -40,6 +47,9 @@ def check_rules(hub: Path) -> dict:
 
 
 def check_erp(hub: Path) -> list[dict]:
+    from .service import Desk
+    if not Desk(hub).erp_enabled():
+        return [_c("desk.erp", "info", "ERP addon is off. Records, review and all four reports need no ERP configuration.")]
     from erp.service import ERPService
 
     try:
@@ -56,6 +66,9 @@ def check_erp(hub: Path) -> list[dict]:
 
 
 def check_write_mode(hub: Path) -> dict:
+    from .service import Desk
+    if not Desk(hub).erp_enabled():
+        return _c("desk.write_mode", "info", "Inbox-only mode hides ERP writes.")
     from erp.service import ERPService
 
     try:
@@ -115,12 +128,16 @@ def check_model(hub: Path) -> dict:
     defn = hub / "agents" / "desk-extractor" / "AGENTS.md"
     if not defn.is_file():
         return _c("desk.model", "fail", "The desk-extractor station is missing.", "Restore agents/desk-extractor/.")
-    creds = (Path.home() / ".claude.json").is_file() or bool(os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"))
-    if not creds:
-        return _c("desk.model", "warn", "No Claude Code login found for the extractor (claude-local). Cases wait at "
-                  "extraction with model_unavailable. Scripted evals still run.", "claude login, then hubzoid stations "
-                  "doctor .")
-    return _c("desk.model", "ok", "The extractor station runs on the installed Claude Code login (claude-local).")
+    from hubzoid.stations.definitions import load
+    try:
+        station = load(hub, "desk-extractor")
+        from shutil import which
+        command = "codex" if station.engine == "codex-local" else "claude"
+        available = bool(which(command))
+        return _c("desk.model", "ok" if available else "warn", f"Extractor uses {station.engine}; {command} installed: {available}. Login still needs runtime qualification.",
+                  "hubzoid stations doctor .")
+    except Exception as exc:
+        return _c("desk.model", "warn", f"Extractor configuration needs verification ({type(exc).__name__}).", "hubzoid stations doctor .")
 
 
 def check_engine() -> dict:
@@ -160,9 +177,26 @@ def _load_env(hub: Path) -> None:
             os.environ[key.strip()] = value.strip()
 
 
+def check_sdk(hub: Path) -> dict:
+    import json
+    import subprocess
+    import hubzoid
+    lock = hub / "hub.lock.json"
+    if not lock.is_file():
+        return _c("desk.sdk", "warn", "No SDK lock. Use the tested immutable SDK revision before qualification.")
+    expected = json.loads(lock.read_text())["sdk"]["commit"]
+    package = Path(hubzoid.__file__).resolve().parent
+    result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=package, capture_output=True, text=True)
+    actual = result.stdout.strip() if result.returncode == 0 else None
+    return _c("desk.sdk", "ok" if actual == expected else "fail", "Installed SDK matches the lock." if actual == expected
+              else "Installed SDK revision differs from hub.lock.json or cannot be verified.",
+              "Install the exact tested SDK commit, then rerun doctor. A moving branch is not a qualification pin.",
+              expected=expected, actual=actual)
+
+
 def run(hub: Path) -> dict:
     hub = Path(hub)
     _load_env(hub)
-    checks = [check_rules(hub), *check_erp(hub), check_write_mode(hub), check_safety(hub), check_engine(),
+    checks = [check_sdk(hub), check_rules(hub), *check_erp(hub), check_write_mode(hub), check_safety(hub), check_engine(),
               check_channels(hub), check_parser(), check_model(hub)]
     return {"checks": checks, "ok": not any(c["status"] == "fail" for c in checks)}

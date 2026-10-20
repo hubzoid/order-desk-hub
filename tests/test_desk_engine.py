@@ -59,6 +59,14 @@ def hub(tmp_path, monkeypatch):
         shutil.copy2(ROOT / f, root / f)
     for d in DIRS:
         shutil.copytree(ROOT / d, root / d, ignore=shutil.ignore_patterns("__pycache__"))
+    # These engine cases intentionally exercise the optional sample ERP,
+    # unlike a fresh inbox-only installation. Never change production defaults
+    # merely to make an ERP fixture enter the old path.
+    import yaml
+    settings_path = root / "hub.settings.yaml"
+    settings = yaml.safe_load(settings_path.read_text())
+    settings["values"]["DESK_ERP_ENABLED"] = True
+    settings_path.write_text(yaml.safe_dump(settings, sort_keys=False))
     (root / "work-items.yaml").write_text("version: 1\nwrite_modes:\n  erp.submit: approve\n")
     from hubzoid.access import store_for
 
@@ -71,7 +79,7 @@ class Engine:
         self.stop = tmp / f"stop-{time.time_ns()}"
         script = tmp / "engine.py"
         script.write_text(ENGINE)
-        env = dict(os.environ, PYTHONPATH=str(hub))
+        env = dict(os.environ, PYTHONPATH=os.pathsep.join(filter(None, (str(hub), os.environ.get("PYTHONPATH", "")))))
         self.proc = subprocess.Popen([sys.executable, str(script), str(hub), str(self.stop)], stdout=subprocess.PIPE,
                                      stderr=subprocess.STDOUT, text=True, env=env)
         deadline = time.time() + 90

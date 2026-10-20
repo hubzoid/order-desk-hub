@@ -30,12 +30,16 @@ def hub_key(hub_dir) -> str:
 
 
 def data_dir(hub_dir) -> Path:
-    path = Path(hub_dir) / ".hubzoid" / "data" / "desk"
+    from hubzoid.datadir import state
+
+    path = state(Path(hub_dir)) / "data" / "desk"
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def output_dir(hub_dir, *parts) -> Path:
-    path = Path(hub_dir).joinpath("output", "desk", *parts)
+    from hubzoid.datadir import root
+
+    path = root(Path(hub_dir)).joinpath("output", "desk", *parts)
     path.mkdir(parents=True, exist_ok=True)
     return path

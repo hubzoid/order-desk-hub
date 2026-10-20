@@ -1,5 +1,8 @@
 version: 1
 doctor:
+  - id: desk.sdk
+    entrypoint: doctor/desk.py:sdk
+    required: true
   - id: desk.rules
     entrypoint: doctor/desk.py:rules
     required: true
