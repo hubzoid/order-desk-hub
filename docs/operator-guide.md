@@ -50,6 +50,6 @@ If the connection drops after a write was sent, the case shows **"The ERP may ha
 
 ## Upgrading the desk
 
-Stop `hubzoid run`, replace the hub's `desk/`, `erp/`, `workflows/order_invoice/`, `tools_local/order_invoice.py` and `AGENTS.md` with the new version's, keep `knowledge/`, `connectors/`, `work-items.yaml` and the hub's data, run `hubzoid-desk doctor .`, then start the hub again. Cases, proposals, ERP links and work items carry over.
+Stop `hubzoid run`, replace the hub's `desk/`, `erp/`, `workflows/order_invoice/`, `tools_local/order_invoice.py`, `AGENTS.md`, `pyproject.toml` and `hub.lock.json` with the new version's, run `pip install -e '.[parsing]'` to install its dependencies, keep `knowledge/`, `connectors/`, `work-items.yaml` and the hub's data, run `hubzoid-desk doctor .`, then start the hub again. Cases, proposals, ERP links and work items carry over.
 
 A new version may compare documents with more detail (for example the 20 Oct 2026 version added rates and what the document states to the duplicate check). A case recorded by the earlier version then compares as different, so a resend of it becomes a `duplicate_conflict` question instead of a silent duplicate. Rerun the earlier case (`hubzoid-desk rerun . CASE --reason "upgrade"`) and then the new one: the duplicate is found again.

@@ -43,14 +43,13 @@ master-data checks and reviewed drafts or submission.
 ## Get your first useful result
 
 You need Python 3.11 or later and Claude Code or Codex signed in on this
-machine. Gmail uses an OAuth client you own.
+machine. Installing the desk installs Hubzoid 2.0 or later. Gmail uses an OAuth client you own.
 
 ```bash
 git clone https://github.com/hubzoid/order-desk-hub order-desk
 cd order-desk
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements-sdk.txt
 pip install -e '.[parsing]'
 hubzoid-desk parser prefetch
 ```

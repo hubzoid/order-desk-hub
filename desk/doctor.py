@@ -189,6 +189,12 @@ def check_sdk(hub: Path) -> dict:
     if not lock.is_file():
         return _c("desk.sdk", "warn", "No SDK lock. Use the tested immutable SDK revision before qualification.")
     try:
+        sdk = json.loads(lock.read_text())["sdk"]
+    except (OSError, ValueError, KeyError, TypeError):
+        sdk = None
+    if isinstance(sdk, dict) and "commit" not in sdk and isinstance(sdk.get("requires"), str):
+        return _check_sdk_release(sdk["requires"])
+    try:
         expected = json.loads(lock.read_text())["sdk"]["commit"]
         if not isinstance(expected, str) or len(expected) != 40:
             raise ValueError("invalid commit")
@@ -252,6 +258,32 @@ def check_sdk(hub: Path) -> dict:
     if result.returncode != 0 or not result.stdout.strip():
         return unknown("Git could not read the editable SDK commit.")
     return verified(result.stdout.strip(), "editable_git")
+
+
+
+def _check_sdk_release(requires: str) -> dict:
+    """A released SDK: the installed Hubzoid version must satisfy the lock's range."""
+    from importlib import metadata
+
+    from packaging.specifiers import InvalidSpecifier, SpecifierSet
+    from packaging.version import InvalidVersion, Version
+
+    recovery = f"Install a Hubzoid release that satisfies {requires}: pip install 'hubzoid{requires}'."
+    try:
+        spec = SpecifierSet(requires)
+    except InvalidSpecifier:
+        return _c("desk.sdk", "fail", "hub.lock.json has an unreadable SDK version range.",
+                  "Restore the reviewed SDK lock.")
+    try:
+        actual = metadata.version("hubzoid")
+        ok = Version(actual) in spec
+    except (metadata.PackageNotFoundError, InvalidVersion):
+        return _c("desk.sdk", "fail", "The installed Hubzoid version cannot be read.", recovery,
+                  expected=requires, actual=None)
+    return _c("desk.sdk", "ok" if ok else "fail",
+              f"Installed Hubzoid {actual} satisfies {requires}." if ok else
+              f"Installed Hubzoid {actual} does not satisfy {requires}.", recovery,
+              expected=requires, actual=actual, source="release")
 
 
 def check_storage(hub: Path) -> dict:
