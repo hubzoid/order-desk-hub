@@ -1,4 +1,4 @@
-"""The ERP module of the ready-made desks: ERPNext first.
+"""The ERP module of the ready-to-use desks: ERPNext first.
 
 One clean boundary, so the Hubzoid SDK can absorb it later and the Customer
 Desk can keep an exact copy of the read parts (see erp/README.md):

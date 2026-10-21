@@ -16,7 +16,7 @@ The review baseline at `e08ea0c7` records 110 synthetic checks passing and live 
 
 ## Why now
 
-This is a flagship ready-made hub. A useful first result must depend on the builder's material and rules, followed by a saved correction that changes the next result. An ERP prerequisite prevents that journey for inbox-only users. Agent-led setup must also expose operational failures rather than defer them to manual UI troubleshooting.
+This is a flagship ready-to-use hub. A useful first result must depend on the builder's material and rules, followed by a saved correction that changes the next result. An ERP prerequisite prevents that journey for inbox-only users. Agent-led setup must also expose operational failures rather than defer them to manual UI troubleshooting.
 
 The SDK already owns email intake, work items, extraction stations, operation recovery and approvals. B038 favours those components over another ingestion or workflow engine. B042 keeps business-specific implementation in this hub and limits SDK changes to demonstrated necessities. The complete scope is the acceptance boundary. Dates follow readiness.
 

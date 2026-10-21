@@ -1,6 +1,6 @@
 # `erp/`: the desks' ERPNext module
 
-This folder is the canonical ERP module of the ready-made desks (decision B042).
+This folder is the canonical ERP module of the ready-to-use desks (decision B042).
 The Order & Invoice Desk owns it. The Customer Desk keeps an exact copy of the
 read parts, in the same layout, marked with the commit it was copied from. The
 Hubzoid SDK may absorb it later. It depends on `httpx`, `pydantic` and `PyYAML`
