@@ -114,7 +114,7 @@ def check_safety(hub: Path) -> dict:
 def check_parser() -> dict:
     if importlib.util.find_spec("docling") is None:
         return _c("desk.parser", "warn", "Docling is not installed: email text and spreadsheets work, PDFs and images "
-                  "do not.", "pip install 'order-invoice-desk-hub[parsing]', then hubzoid-desk parser prefetch")
+                  "do not.", "pip install -e '.[parsing]' in the hub folder, then hubzoid-desk parser prefetch")
     cache = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub"
     models = list(cache.glob("models--docling-project--*")) if cache.is_dir() else []
     if not models:

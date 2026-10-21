@@ -26,7 +26,7 @@ Every refusal has a stable code, the same in chat, the CLI (`--json` prints `{"d
 | `file_too_large` | Over `DESK_MAX_FILE_BYTES` or `DESK_MAX_PAGES` | Send a smaller document |
 | `parse_timeout` | Longer than `DESK_PARSE_TIMEOUT_SECONDS` | Split the document. The first image after install is slow until `hubzoid-desk parser prefetch` has run |
 | `parse_failed` | Damaged or unreadable | Ask the sender for a new copy |
-| `parser_unavailable` | Docling or its model assets are missing | `pip install 'order-invoice-desk-hub[parsing]'` and `hubzoid-desk parser prefetch` |
+| `parser_unavailable` | Docling or its model assets are missing | `pip install -e '.[parsing]'` in the hub folder and `hubzoid-desk parser prefetch` |
 | `extraction_failed` | The extractor station did not finish (often the model login) | `hubzoid stations doctor .`, then restart the intake work item |
 | `too_many_lines` | Over `DESK_MAX_LINES` per draft | Split the order |
 | `policy_invalid`, `alias_conflict` | A rule file is invalid, or two alias rows disagree | Fix the file and line named, `hubzoid-desk rules check .`, then rerun |

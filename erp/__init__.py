@@ -18,4 +18,4 @@ Hubzoid operation ledger do.
 
 __version__ = "0.1.0"
 #: The canonical home of this module. A vendored copy records the commit it came from.
-CANONICAL = "hubzoid/order-invoice-desk-hub:erp/"
+CANONICAL = "hubzoid/order-desk-hub:erp/"

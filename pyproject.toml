@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "order-invoice-desk-hub"
+name = "order-desk-hub"
 version = "0.1.0"
 description = "Order & Invoice Desk: a ready-to-use Hubzoid hub. Orders and invoices from your inbox, organized and sourced, with optional ERPNext drafts and approved submission."
 readme = "README.md"

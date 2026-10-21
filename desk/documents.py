@@ -172,7 +172,7 @@ def _docling(data: bytes, label: str, *, ocr: bool, limits: Limits, suffix: str)
             tail = (done.stderr or "").strip().splitlines()[-1:] or [""]
             if "ModuleNotFoundError" in done.stderr and "docling" in done.stderr:
                 raise ParseError("parser_unavailable", "Docling is not installed. Install the parsing extra "
-                                 "(pip install 'order-invoice-desk-hub[parsing]') and run `hubzoid-desk parser "
+                                 "(pip install -e '.[parsing]' in the hub folder) and run `hubzoid-desk parser "
                                  "prefetch`.")
             if "LocalEntryNotFoundError" in done.stderr or "offline" in done.stderr.lower():
                 raise ParseError("parser_unavailable", "Docling's model assets are not on this machine. Run "

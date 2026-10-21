@@ -1,6 +1,6 @@
 # Order & Invoice Desk: inbox records, reports and optional ERP
 
-Proposed destination: `order-invoice-desk-hub/proposals/2026-10-20-inbox-records-and-optional-erp.md`.
+Proposed destination: `order-desk-hub/proposals/2026-10-20-inbox-records-and-optional-erp.md`.
 
 Status: approval draft. This proposes implementation, not a claim of released capability. The qualification table, delegated setup authority, customer-owned Gmail OAuth client, storage authorities and owner self-approval below are proposed choices pending founder approval. Approval would supersede earlier ERP-first assumptions for this hub, while preserving B029 write controls and B042 code ownership. It adopts the [ready-hubs common contract](2026-10-20-ready-hubs-common-contract.md), B029, B037, B038 and B042. The Order & Invoice Desk remains the canonical owner of desk ERP code. Customer Desk retains a marked copy of its read parts. No fourth repository or shared desk package is introduced.
 
