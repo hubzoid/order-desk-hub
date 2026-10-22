@@ -6,7 +6,7 @@
   },
   "sdk": {
     "package": "hubzoid",
-    "requires": ">=2.0",
+    "requires": ">=2.0.1",
     "repository": "hubzoid/hubzoid"
   },
   "erp_module": {

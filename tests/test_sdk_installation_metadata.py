@@ -147,17 +147,17 @@ def test_invalid_editable_url_warns_without_git(locked_hub, monkeypatch):
 def release_hub(tmp_path):
     hub = tmp_path / "desk"
     hub.mkdir()
-    (hub / "hub.lock.json").write_text(json.dumps({"sdk": {"package": "hubzoid", "requires": ">=2.0"}}))
+    (hub / "hub.lock.json").write_text(json.dumps({"sdk": {"package": "hubzoid", "requires": ">=2.0.1"}}))
     return hub
 
 
-@pytest.mark.parametrize("version,status", [("2.0.0", "ok"), ("2.0.1", "ok"), ("2.3.0", "ok"), ("1.3.2", "fail")])
+@pytest.mark.parametrize("version,status", [("2.0.0", "fail"), ("2.0.1", "ok"), ("2.3.0", "ok"), ("1.3.2", "fail")])
 def test_released_sdk_must_satisfy_the_lock_range(release_hub, monkeypatch, version, status):
     monkeypatch.setattr(metadata, "version", lambda name: version)
     monkeypatch.setattr(subprocess, "run", no_git)
     result = check_sdk(release_hub)
     assert result["status"] == status
-    assert result["details"] == {"expected": ">=2.0", "actual": version, "source": "release"}
+    assert result["details"] == {"expected": ">=2.0.1", "actual": version, "source": "release"}
 
 
 def test_unreadable_release_range_fails(tmp_path):
@@ -169,4 +169,4 @@ def test_unreadable_release_range_fails(tmp_path):
 
 def test_shipped_lock_uses_a_release_range():
     lock = json.loads((Path(__file__).resolve().parents[1] / "hub.lock.json").read_text())
-    assert "commit" not in lock["sdk"] and lock["sdk"]["requires"] == ">=2.0"
+    assert "commit" not in lock["sdk"] and lock["sdk"]["requires"] == ">=2.0.1"
