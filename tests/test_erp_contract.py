@@ -383,3 +383,26 @@ def test_dataset_counts_and_labels():
     emails = (DATASET / "bindings.csv").read_text()
     assert all(line.split(",")[2].endswith(".example") or line.split(",")[2].startswith("+1202555")
                for line in emails.splitlines()[1:])
+
+
+def test_a_site_with_a_draft_hook_gets_no_writes(tmp_path, fake_site):
+    """Doctor's draft_hooks finding is enforced at write time: a Server Script
+    on Sales Order refuses the draft before anything is written."""
+    from erp import write
+
+    write._hook_checks.clear()
+    w = _fake(tmp_path, fake_site).writer()
+    real = w.rt.list_docs
+
+    def with_hook(doctype, **kw):
+        if doctype == "Server Script":
+            return [{"name": "Notify on save", "reference_doctype": "Sales Order"}]
+        return real(doctype, **kw)
+
+    w.rt.list_docs = with_hook
+    with pytest.raises(ERPError) as refused:
+        w.create_draft("sales_order", SO, "op-hooked")
+    assert refused.value.code == "erp_hooks_unsafe" and "Server Script Notify on save" in refused.value.message
+    w.rt.list_docs = real
+    assert w.find("sales_order", "op-hooked") == []
+    write._hook_checks.clear()

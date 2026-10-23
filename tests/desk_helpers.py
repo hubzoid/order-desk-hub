@@ -25,6 +25,8 @@ def make_hub(tmp_path: Path, *, writes: bool = True, mode: str = "approve") -> P
     (hub / "connectors").mkdir()
     (hub / "connectors" / "erpnext.yaml").write_text(config_lib.dump(dict(config_lib.SAMPLE_DEFAULT, writes_enabled=writes)))
     (hub / "work-items.yaml").write_text(f"version: 1\nwrite_modes:\n  erp.submit: {mode}\n")
+    # ERP mode is chosen explicitly: an unset value is inbox first on a fresh hub.
+    (hub / "hub.settings.yaml").write_text("version: 1\nvalues:\n  DESK_ERP_ENABLED: true\n")
     return hub
 
 

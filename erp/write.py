@@ -178,6 +178,11 @@ def clean_payload(kind: str, payload: dict) -> tuple[BaseModel, list[str]]:
                        field=loc) from None
 
 
+#: How long a hook check of a site stands before writes check again (seconds).
+HOOK_CHECK_SECONDS = 60
+_hook_checks: dict[tuple, tuple[float, list, list]] = {}
+
+
 class DraftWriter:
     def __init__(self, cfg, read_transport, submit_transport_factory: Callable[[], object] | None = None, *,
                  deployment_id: str, write_transport=None):
@@ -193,6 +198,30 @@ class DraftWriter:
             raise ERPError("invalid_payload", "external_ref is required: the stable logical operation key.",
                            status=422)
         return dg.operation_marker(self.deployment_id, self.cfg.site_fingerprint(), self.cfg.company, external_ref)
+
+    def _require_safe_hooks(self) -> None:
+        """Refuse a write when the site has a hook that could submit, send,
+        notify or post on a draft save, or when that cannot be checked. Doctor
+        reports the same finding; this enforces it at write time."""
+        if self.cfg.backend == "sample":
+            return
+        import time
+
+        from .doctor import hook_findings, unqualified_apps
+
+        key = (self.cfg.site_fingerprint(), self.cfg.company)
+        hit = _hook_checks.get(key)
+        if hit is None or time.monotonic() - hit[0] > HOOK_CHECK_SECONDS:
+            found, unverifiable = hook_findings(self.rt, unqualified_apps(self.rt, self.cfg))
+            hit = _hook_checks[key] = (time.monotonic(), found, unverifiable)
+        _, found, unverifiable = hit
+        if found or unverifiable:
+            raise ERPError("erp_hooks_unsafe", "Nothing was written: on this ERPNext site "
+                           + ("these act on a Sales Order or Purchase Invoice save: " + ", ".join(found) + ". "
+                              if found else "")
+                           + ("These cannot be checked: " + ", ".join(unverifiable) + ". " if unverifiable else "")
+                           + "An ERP administrator disables them or lets the integration user read them, then "
+                             "runs hubzoid-erp doctor.", status=409, found=found, unverifiable=unverifiable)
 
     def _check_config(self, model) -> None:
         cfg = self.cfg
@@ -368,6 +397,7 @@ class DraftWriter:
         doctype = _kind(kind)
         if not self.cfg.writes_enabled:
             raise writes_disabled()
+        self._require_safe_hooks()
         model, stripped = clean_payload(kind, payload)
         self._check_config(model)
         marker = self.marker(external_ref)
@@ -462,6 +492,7 @@ class DraftWriter:
         doctype = _kind(kind)
         if not self.cfg.writes_enabled:
             raise writes_disabled()
+        self._require_safe_hooks()
         if not isinstance(approved_digest, str) or not approved_digest.startswith("sha256:"):
             raise ERPError("invalid_payload", "approved_digest is the sha256: digest the person approved.",
                            status=422)

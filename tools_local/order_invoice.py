@@ -84,6 +84,39 @@ def _write_case_page(desk: Desk, view: dict) -> str | None:
         return None
 
 
+def _changed(case: str, fn):
+    """Run a tool that changes a case, then refresh the case page if this
+    chat already shows it, so the document panel never shows an old state."""
+    def go(d, a):
+        out = fn(d, a)
+        try:
+            from hubzoid import _request_ctx
+            from hubzoid import memory as memlib
+
+            chat_id = _request_ctx.get_chat_id()
+            view = d.show(a, case)
+            if chat_id and (memlib.chat_artifact_dir(_HUB, chat_id) / f"{view['number']}.html").exists():
+                if isinstance(out, dict):
+                    out["page"] = _write_case_page(d, view)
+                    out["page_revision"] = view["revision"]
+        except Exception:  # noqa: BLE001 - the page is a convenience; the change itself is done
+            pass
+        return out
+    return _run(go)
+
+
+def _record(view: dict) -> dict | None:
+    """The source record. With an ERP proposal, its exceptions are grouped and
+    explained: they decide what reports count, but the proposal fills those
+    values separately, so they are not the case's own questions."""
+    rec = view.get("record")
+    if not rec or not view.get("proposal") or not rec.get("exceptions"):
+        return rec
+    return {**rec, "exceptions": [], "for_reports": {
+        "note": "For reports: these values are not in the message. The ERP proposal fills them separately.",
+        "missing": rec["exceptions"]}}
+
+
 def _brief(view: dict) -> dict:
     prop = view.get("proposal") or {}
     ev = prop.get("evidence") or {}
@@ -91,7 +124,7 @@ def _brief(view: dict) -> dict:
         "case": view["number"], "case_id": view["case_id"], "state": view["state"], "revision": view["revision"],
         "kind": view.get("kind"), "party": view.get("party"), "reference": view.get("reference"),
         "owner": view.get("owner"), "proposal_revision": view.get("proposal_revision"), "digest": view.get("digest"),
-        "total": view.get("total"), "record": view.get("record"),
+        "total": view.get("total"), "record": _record(view),
         "lines": [{"n": l["n"], "source": (l.get("source") or {}).get("text"), "loc": (l.get("source") or {}).get("loc"),
                    "item": (l.get("item") or {}).get("code"), "qty": (l.get("unit") or {}).get("qty"),
                    "uom": (l.get("unit") or {}).get("uom"), "rate": (l.get("rate") or {}).get("value"),
@@ -199,7 +232,7 @@ def desk_review_record(case: str, expected_revision: int, changes_json: str = "{
         except ValueError:
             raise DeskError("invalid_json", "changes_json must be a JSON object.", status=422) from None
         return d.review_record(a, case, expected_revision=expected_revision, changes=changes, accept=accept)
-    return _run(go)
+    return _changed(case, go)
 
 
 @function_tool
@@ -259,7 +292,7 @@ def desk_claim(case: str, expected_revision: int) -> str:
         case: The case number or id.
         expected_revision: The case revision you saw (desk_case shows it).
     """
-    return _run(lambda d, a: d.claim(a, case, expected_revision=expected_revision))
+    return _changed(case, lambda d, a: d.claim(a, case, expected_revision=expected_revision))
 
 
 @function_tool
@@ -271,12 +304,13 @@ def desk_release(case: str, expected_revision: int, reason: str = "") -> str:
         expected_revision: The case revision you saw.
         reason: Why, in a few words.
     """
-    return _run(lambda d, a: d.release(a, case, expected_revision=expected_revision, reason=reason))
+    return _changed(case, lambda d, a: d.release(a, case, expected_revision=expected_revision, reason=reason))
 
 
 @function_tool
 def desk_answer(case: str, expected_revision: int, field: str, value: str, source_ref: str = "") -> str:
     """Answer one of the case's questions with a correction for this case only. It never changes a shared rule.
+    A case nobody owns is claimed for you first, in the same step.
 
     Args:
         case: The case number or id.
@@ -288,8 +322,13 @@ def desk_answer(case: str, expected_revision: int, field: str, value: str, sourc
         value: The value the person chose.
         source_ref: The element id the person points to as evidence, if any.
     """
-    return _run(lambda d, a: d.correct(a, case, expected_revision=expected_revision,
-                                       fields=[{"path": field, "value": value, "source_ref": source_ref or None}]))
+    def go(d, a):
+        revision = expected_revision
+        if not d.show(a, case).get("owner"):
+            revision = d.claim(a, case, expected_revision=expected_revision)["revision"]
+        return d.correct(a, case, expected_revision=revision,
+                         fields=[{"path": field, "value": value, "source_ref": source_ref or None}])
+    return _changed(case, go)
 
 
 @function_tool
@@ -300,7 +339,7 @@ def desk_rerun(case: str, reason: str) -> str:
         case: The case number or id.
         reason: Why, in a few words.
     """
-    return _run(lambda d, a: d.rerun(a, case, reason=reason))
+    return _changed(case, lambda d, a: d.rerun(a, case, reason=reason))
 
 
 @function_tool
@@ -316,7 +355,7 @@ def desk_create_draft(case: str, expected_revision: int, digest: str) -> str:
     def go(d, a):
         out = d.request_draft(a, case, expected_revision=expected_revision, digest=digest)
         return _wait(d, a, out, until=("erp_draft_saved", "error", "ambiguous", "draft_ready"))
-    return _run(go)
+    return _changed(case, go)
 
 
 @function_tool
@@ -337,7 +376,7 @@ def desk_request_submission(case: str, expected_revision: int, digest: str, erp_
         if op:
             out["approval"] = {"operation_id": op["id"], "digest": op["args_digest"], "document": op["document"]}
         return out
-    return _run(go)
+    return _changed(case, go)
 
 
 @function_tool
@@ -407,7 +446,7 @@ def desk_cancel(case: str, expected_revision: int, reason: str) -> str:
         expected_revision: The case revision you saw.
         reason: Why.
     """
-    return _run(lambda d, a: d.cancel(a, case, expected_revision=expected_revision, reason=reason))
+    return _changed(case, lambda d, a: d.cancel(a, case, expected_revision=expected_revision, reason=reason))
 
 
 @function_tool

@@ -77,6 +77,12 @@ def install_channels(desk, *, actor: str, trust: str = "bound_senders") -> list[
 def load(desk, *, which: str = "order-invoice-desk", events: list[str] | None = None) -> list[dict]:
     from hubzoid.channels import config as channel_config
 
+    if which not in SETS:
+        from .service import DeskError
+
+        raise DeskError("validation_failed", f"There is no sample set {which!r}. Sets: {', '.join(SETS)}.",
+                        status=422)
+
     sample_channels.register()
     root = dataset_dir(desk)
     rows = [json.loads(l) for l in (root / "messages" / SETS[which]).read_text().splitlines()]

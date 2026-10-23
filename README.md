@@ -48,7 +48,7 @@ machine. Installing the desk installs Hubzoid 2.0.1 or later. Gmail uses an OAut
 ```bash
 git clone https://github.com/hubzoid/order-desk-hub order-desk
 cd order-desk
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[parsing]'
 hubzoid-desk parser prefetch

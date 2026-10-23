@@ -2,7 +2,14 @@
 
 For the sales and accounts people who work the desk, and the administrators who keep it running.
 
-## The queue
+## Without an ERP (the default)
+
+- Every incoming order or supplier invoice becomes a **case** with a normalized record: party, reference, dates, currency, totals and lines, each tied to its source.
+- Ask the desk assistant "What is in the desk queue?" or run `hubzoid-desk list .`. Open a case to see the record and its exceptions.
+- Correct a field from the source, or accept a record once it has no exceptions (`desk_review_record`, or `hubzoid-desk review-record . CASE --expected-revision N --accept`). Every correction is a new revision, and the original extraction is kept.
+- Only accepted records count in the four reports. Unreviewed records and exceptions stay visible and out of the totals. See [how records and reports work](inbox-records.md).
+
+## With the ERP addon: the queue
 
 Every incoming order or supplier invoice is a **case** (CASE-000001 and so on). Ask the desk assistant "What is in the desk queue?", or run `hubzoid-desk list .`. The Hubzoid Console shows the same work under Work Items (one intake item per document, one item per ERP action) and under the agent's Intake tab (every message and attachment as received).
 

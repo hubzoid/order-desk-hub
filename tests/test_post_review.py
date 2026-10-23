@@ -194,9 +194,12 @@ def test_saved_acknowledgements_and_rule_correction_apply_to_existing_case(tmp_p
 
 def test_legacy_erp_fallback_and_migration_guard_preserve_identity(tmp_path, monkeypatch):
     hub = make_hub(tmp_path)
+    (hub / "hub.settings.yaml").unlink()          # an installation from before DESK_ERP_ENABLED
     legacy = ERPService.for_hub(hub)
     deployment = legacy.deployment_id
-    assert Desk(hub, grants=lambda a,p: True).erp_enabled()
+    legacy_desk = Desk(hub, grants=lambda a,p: True)
+    legacy_desk.store.link("legacy-case", work_item_id="w-legacy", action="draft", state="succeeded")
+    assert legacy_desk.erp_enabled()          # an installation with ERP work keeps ERP mode
     monkeypatch.setenv("HUBZOID_DATA_DIR", str(tmp_path / "newdata"))
     from hubzoid.datadir import state
     target = state(hub) / "data/erp/deployment-id"
@@ -397,3 +400,17 @@ def test_changed_deployment_marker_cannot_downgrade_original_unknown(tmp_path):
         d.dispatch_draft(a["id"], writer=SimpleNamespace(marker=lambda ref: "changed-deployment-marker",
                                                        create_draft=must_not_send), **args)
     assert d.store.meta(d._invoice_fence_key()) == before
+
+
+def test_a_fresh_clone_is_inbox_first_and_a_real_connector_keeps_erp(tmp_path):
+    import yaml
+
+    """No DESK_ERP_ENABLED: the shipped sample connector alone does not turn
+    ERP on. A real ERPNext connector, or ERP work in the store, does."""
+    hub = make_hub(tmp_path)
+    (hub / "hub.settings.yaml").write_text(yaml.safe_dump({"version": 1, "values": {}}))
+    d = Desk(hub, grants=lambda a, p: True)
+    assert (hub / "connectors/erpnext.yaml").is_file() and not d.erp_enabled()
+    path = hub / "connectors/erpnext.yaml"
+    path.write_text(path.read_text().replace("backend: sample", "backend: frappe_rest"))
+    assert Desk(hub, grants=lambda a, p: True).erp_enabled()

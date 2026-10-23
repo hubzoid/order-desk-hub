@@ -2,7 +2,11 @@
 
 The desk decides nothing the files do not say. When something is not covered, it asks. These files are how you teach it, and every proposal cites the rule or row it used.
 
-## Policies
+## Record rules (no ERP needed)
+
+`knowledge/record-rules.md` holds the rules for organizing records without an ERP: aliases, unit conversions, tolerance, rounding and the default tax basis, each citing its source. Check them with `hubzoid-desk rules check .`. In chat, `desk_propose_record_rules` proposes a sourced change as a reviewed Hub change; it never activates one. See [how records and reports work](inbox-records.md).
+
+## ERP addon policies
 
 `knowledge/order-policy.md` and `knowledge/invoice-policy.md` start with frontmatter that the desk validates:
 

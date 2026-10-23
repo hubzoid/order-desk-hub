@@ -79,3 +79,77 @@ def test_post_submit_content_change_preserves_review_and_authoritative_total(tmp
         d.rerun(OWNER, case['id'], reason='must not repost')
     assert shown['error']['code'] == 'post_submit_review_required'
     assert d.store.get_case(case['id'])['differences_json']
+
+
+def test_answering_an_unowned_case_claims_it_in_the_same_step(tmp_path, monkeypatch):
+    """The chat tool claims a case nobody owns before answering its question,
+    so a person needs one step, not a claim round trip."""
+    import asyncio
+    import importlib.util
+    import sys
+
+    from agents.tool_context import ToolContext
+
+    from tests.desk_helpers import ROOT
+
+    d = make_desk(make_hub(tmp_path))
+    source = json.loads((EXTRACTIONS / 'OID-009.json').read_text())
+    els = json.loads((ELEMENTS / 'OID-009.json').read_text())['elements']
+    els.append({'id': 'E999', 'text': 'Tax 2.00', 'loc': 'tax line', 'doc': 1, 'doc_label': 'invoice'})
+    source['stated_tax'] = {'value': '2.00', 'source_ref': 'E999'}
+    case, _ = d.open_case(payload(envelopes()['OID-009']), work_item_id='tax-tool')
+    store_elements(d, case['id'], els)
+    out = d.stage_match(case['id'], source, elements=els)
+    spec = importlib.util.spec_from_file_location("order_tools_answer_test", ROOT / "tools_local/order_invoice.py")
+    tools = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, spec.name, tools)
+    spec.loader.exec_module(tools)
+    monkeypatch.setattr(tools, "_HUB", d.hub_dir)
+    monkeypatch.setattr(tools, "_desk", lambda: d)
+    monkeypatch.setattr(tools, "_actor", lambda: OWNER)
+    args = json.dumps({"case": case['id'], "expected_revision": out['revision'], "field": "tax",
+                       "value": "erp_template_checked", "source_ref": ""})
+    ctx = ToolContext(context=None, tool_name="desk_answer", tool_call_id="t1", tool_arguments=args)
+    answered = json.loads(asyncio.run(tools.desk_answer.on_invoke_tool(ctx, args)))
+    assert not isinstance(answered.get("error"), dict), answered
+    assert d.show(OWNER, case['id'])['owner'] == OWNER
+    assert d.store.proposal(case['id'])['corrections']['tax'] == 'erp_template_checked'
+
+
+def test_approving_drafts_for_this_chat_never_covers_a_submission(tmp_path, monkeypatch):
+    """"Approve for this chat" on an inert ERP draft is a grant for that one
+    tool. A submission in the same chat still asks a person, every time."""
+    import shutil
+
+    from hubzoid.hitl import service as hitl
+
+    from tests.desk_helpers import ROOT
+
+    for key in ("DATABASE_URL", "HUBZOID_OPERATIONAL_DB", "HUBZOID_DATA_DIR"):
+        monkeypatch.delenv(key, raising=False)
+    hub = tmp_path / "order-desk"
+    hub.mkdir()
+    shutil.copy(ROOT / "hitl.yaml", hub / "hitl.yaml")
+    from hubzoid import migrations
+    from hubzoid.db import operational_engine
+
+    migrations.upgrade(operational_engine(hub), "operational")
+    me = hitl.Caller(account_id="op-1", email="op@example.test", conversation_id="chat-1")
+    draft = hitl.check(hub, "order-desk", me, tool="desk_create_draft", arguments={"case": "CASE-1"})
+    assert draft.action == "ask" and draft.request["allow_chat"]
+    hitl.decide(hub, "order-desk", draft.request["id"], account_id="op-1", email="op@example.test",
+                decision="approve_chat")
+    again = hitl.check(hub, "order-desk", me, tool="desk_create_draft", arguments={"case": "CASE-2"})
+    assert again.action == "allow"                          # drafts: once per chat
+    submit = hitl.check(hub, "order-desk", me, tool="desk_approve_submission",
+                        arguments={"case": "CASE-1", "operation_id": "op", "digest": "sha256:x"})
+    assert submit.action == "ask" and not submit.request["allow_chat"]
+
+
+def test_an_unknown_sample_set_names_the_sets(tmp_path):
+    from desk import sample
+
+    d = make_desk(make_hub(tmp_path))
+    with pytest.raises(DeskError) as err:
+        sample.load(d, which="extra")
+    assert err.value.code == "validation_failed" and "order-invoice-desk, extras, adversarial" in err.value.message

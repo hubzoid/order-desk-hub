@@ -85,8 +85,25 @@ class Desk:
         values = (yaml.safe_load(path.read_text()) or {}).get("values", {}) if path.is_file() else {}
         if "DESK_ERP_ENABLED" in values:
             return values["DESK_ERP_ENABLED"] is True
-        # Preserve explicit connectors on installations predating this setting.
-        return (self.hub_dir / "connectors/erpnext.yaml").is_file()
+        # Unset: a fresh clone is inbox first, even though it ships the sample
+        # connector file. An installation from before this setting keeps ERP
+        # mode when it already relies on it: a real ERPNext connector, or ERP
+        # cases and operations in its store that must not be stranded.
+        connector = self.hub_dir / "connectors/erpnext.yaml"
+        if not connector.is_file():
+            return False
+        if ((yaml.safe_load(connector.read_text()) or {}).get("backend") or "sample") != "sample":
+            return True
+        return self._has_erp_work()
+
+    def _has_erp_work(self) -> bool:
+        try:
+            with self.store.read() as c:
+                return c.execute("SELECT 1 FROM desk_cases WHERE hub_id=? AND erp_name IS NOT NULL LIMIT 1",
+                                 (self.hub_id,)).fetchone() is not None or \
+                    c.execute("SELECT 1 FROM desk_erp_links LIMIT 1").fetchone() is not None
+        except Exception:  # noqa: BLE001 - a store that cannot be read yet has no ERP work
+            return False
 
     def source_scope(self, channel: str) -> str:
         import hashlib
