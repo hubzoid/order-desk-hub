@@ -36,6 +36,30 @@ WRITE_DOCTYPES = ["Sales Order", "Purchase Invoice"]
 QUALIFIED: dict[str, tuple[str, ...]] = {"frappe": (), "erpnext": ()}
 
 
+def hook_findings(transport, unqualified_apps=()) -> tuple[list[str], list[str]]:
+    """What on the site could act on a draft save of the two documents the
+    desk writes: hooks found, and what could not be checked."""
+    found, unverifiable = [], []
+    for doctype, base, field in HOOKS:
+        try:
+            rows = transport.list_docs(doctype, filters=base + [[field, "in", WRITE_DOCTYPES]], fields=[field],
+                                       start=0, limit=20)
+            found += [f"{doctype} {r['name']}" for r in rows]
+        except ERPError as exc:
+            if exc.code == "not_found":
+                continue          # the DocType is not installed on this site
+            unverifiable.append(f"{doctype} ({exc.code})")
+    if unqualified_apps:
+        unverifiable.append("apps " + ", ".join(unqualified_apps))
+    return found, unverifiable
+
+
+def unqualified_apps(transport, cfg) -> list[str]:
+    if cfg.backend != "frappe_rest":
+        return []
+    return sorted(set(transport.versions()) - {"frappe", "erpnext"} - set(cfg.qualified_apps))
+
+
 def _check(cid, status, summary, recovery=None, **details):
     out = {"id": cid, "status": status, "summary": summary}
     if recovery:
@@ -149,18 +173,7 @@ def run(service, *, probe_resources: bool = True) -> dict:
                                  + ", ".join(f"{k}: {v}" for k, v in state.items()) + ".",
                                  "An ERP administrator runs hubzoid-erp bootstrap export, reviews it, then "
                                  "hubzoid-erp bootstrap apply with an administrator credential.", state=state))
-        found, unverifiable = [], []
-        for doctype, base, field in HOOKS:
-            try:
-                rows = transport.list_docs(doctype, filters=base + [[field, "in", WRITE_DOCTYPES]], fields=[field],
-                                           start=0, limit=20)
-                found += [f"{doctype} {r['name']}" for r in rows]
-            except ERPError as exc:
-                if exc.code == "not_found":
-                    continue          # the DocType is not installed on this site
-                unverifiable.append(f"{doctype} ({exc.code})")
-        if extra:
-            unverifiable.append("apps " + ", ".join(extra))
+        found, unverifiable = hook_findings(transport, extra)
         if found or unverifiable:
             write_ok = False
             checks.append(_check("draft_hooks", "fail",

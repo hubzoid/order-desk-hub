@@ -595,7 +595,7 @@ Apache-2.0, original data, made by `erp/datasets/generate.py` (never by a model)
 | Folder | Contents |
 |---|---|
 | `erp/` | ERPNext-shaped documents for every backend: company, warehouses, UOMs, price lists, 4 customers, 3 suppliers, 12 items, 24 item prices, stock bins, 6 sales orders, 4 purchase orders, 3 purchase receipts, 4 sales invoices, 3 purchase invoices, contacts. Draft, submitted and cancelled states, a disabled item, missing stock, two similar SKUs, an expired price, a contract price, a partial receipt and conflicting bill references are planted on purpose. |
-| `messages/` | Intake envelopes (HUB-106 `IntakeEnvelope` v1): the twelve Order & Invoice Desk messages, the carton correction extra, the twenty Customer Desk requests, and adversarial companions for both desks. `trust` is `pending`: the synthetic importer derives it from `bindings.csv`, a message never asserts it. |
+| `messages/` | Intake envelopes (Hubzoid `IntakeEnvelope` v1): the twelve Order & Invoice Desk messages, the carton correction extra, the twenty Customer Desk requests, and adversarial companions for both desks. `trust` is `pending`: the synthetic importer derives it from `bindings.csv`, a message never asserts it. |
 | `raw/` | The same messages as provider bytes: RFC 822 email and WhatsApp-style JSON. |
 | `attachments/` | Original PDF, spreadsheet and image fixtures, each labelled synthetic. One PDF is truncated on purpose. |
 | `print/` | Deterministic print PDFs of the four submitted sales invoices (for invoice copies). |
