@@ -41,3 +41,45 @@ Read README.md and docs/inbox-records.md. Work as an authorized local host opera
 9. Bootstrap once from selected representative documents, explicit company rules and an example of a good result. Preserve source material inside `knowledge/sources/`. Propose exact aliases/conversions and supported typed policies in `knowledge/record-rules.md`. Show uncertain mappings as questions. Test separate holdout documents with `hubzoid-desk preview . FILE --json` before activation. On writable source, `desk_propose_record_rules` stores a pending SDK Hub-change proposal, never activates it. On read-only source it returns a readable builder diff and explicitly stores no pending proposal. The authorized human uses existing Hub-change review/approval in their own session, or reviews/commits files in the builder checkout. On read-only hosting, redeploy that approved checkout. Save one correction and verify the next result after restart. Unsupported prose needs scoped engineering, not generated code.
 
 Troubleshoot missing records by checking connection status, bounded import progress, sender quarantine, intake/work-item state, enabled source and runtime login in that order. Empty reports may mean every record is still unreviewed or excepted. Do not enable ERP merely to fix an empty report. `desk_health` and the exceptions report explain the queue.
+
+## Try the labelled sample (optional, with a sample ERPNext)
+
+Use this before the builder's own mail, or to show the optional ERP addon. Everything is the labelled synthetic company Synthetic Meridian Distribution on the sample ERP backend. Nothing reaches a real ERP or mailbox.
+
+```bash
+hubzoid-desk parser prefetch            # Docling's model assets for PDFs and images, a few minutes, once
+hubzoid-desk sample install .           # synthetic data, sender bindings, two sample channels, ERP addon on
+grep -q HUBZOID_SCHEDULES .env || echo 'HUBZOID_SCHEDULES=1' >> .env
+hubzoid-desk doctor .                   # every check ok, except model access if not signed in
+hubzoid run . --port 8711 --bridge-port 8712 --no-open &
+hubzoid-desk sample load .
+hubzoid-desk list .                     # repeat until no case is "received" (about 2 to 4 minutes)
+```
+
+If doctor reports `desk.model` missing, the builder signs in to Claude Code (`claude login`) or Codex. For Codex, set `MODEL=codex-local` in `.env` and `engine: codex-local` in `agents/desk-extractor/AGENTS.md`.
+
+Expect ten cases ready and two questions: an ambiguous bolt (AH-3316) and a bill for more than was received (GCS-3003). Show one order and one invoice with every line's source. These counts describe the synthetic fixture, not measured accuracy. `hubzoid-desk sample load . --set extras` adds the carton document for the correction below. An unknown set name lists the sets.
+
+**Show the reports with numbers.** Records count only once a person accepts them, before any ERP draft is saved. Pick one order and one invoice, resolve each record exception from the source with `--changes` (or pick records with none), accept them, then run the reports:
+
+```bash
+hubzoid-desk show . CASE --json                # record.revision and record.exceptions
+hubzoid-desk review-record . CASE --expected-revision N --changes '{"currency": "USD"}' --json
+hubzoid-desk review-record . CASE --expected-revision N --accept --json
+hubzoid-desk report . orders --json
+hubzoid-desk report . invoices --json
+```
+
+Totals sit in `totals_by_currency`. Show which records are still excluded and why.
+
+**ERP drafts on the sample.** `work-items.yaml` ships with `erp.submit: draft`. Claim a case and save its inert draft (`hubzoid-desk claim`, then `hubzoid-desk draft . CASE --expected-revision N --digest sha256:...`). To show submission, change `erp.submit` to `approve` (show the diff first) and ask with `hubzoid-desk submit-request`. Stop there: the builder approves on the chat card or the Work items screen. You never approve.
+
+**The correction moment.** "In our orders, a carton of SYN-ITEM-001 is twelve units." Quote the words in a note under `knowledge/sources/`, add exactly one row to `knowledge/sku-aliases.csv` citing it, run `hubzoid-desk rules check .`, then `hubzoid-desk rerun . CASE --reason "..."` on the document that asked. Only the affected line changes and the earlier proposal revision is kept.
+
+**Start again.** Stop `hubzoid run`, then `python demo/reset.py . --yes`. It refuses unless the ERP configuration in force is the sample backend.
+
+A real ERPNext site follows `docs/erpnext-setup.md`. Keep `writes_enabled: false` until doctor shows the custom field and no draft-save hooks. Writes are refused while doctor would find such hooks.
+
+## When something fails
+
+Every error prints a code and the next step. `docs/errors.md` lists them. For a stopped work item, fix the cause, then `hubzoid work-items restart . ITEM --reason "..."`. An `ambiguous` case is reconciled with `hubzoid-desk reconcile . CASE` before anything else.

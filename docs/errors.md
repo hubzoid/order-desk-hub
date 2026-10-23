@@ -63,6 +63,7 @@ Every refusal has a stable code, the same in chat, the CLI (`--json` prints `{"d
 | `erp_unavailable`, `erp_rate_limited` | The site did not answer, or is limiting | Reads retry. Try again later |
 | `protocol_error` | Not a Frappe answer (a redirect, a proxy page, oversized) | Check `site_url` |
 | `erp_writes_disabled` | `writes_enabled: false` | Enable after doctor shows ready_write |
+| `erp_hooks_unsafe` | The site has a server script, webhook, notification, workflow, assignment rule or auto repeat on Sales Order or Purchase Invoice, or the desk cannot check them. Nothing was written. | An ERP administrator disables it, or lets the integration user read those DocTypes, then runs `hubzoid-erp doctor .` |
 | `invalid_payload`, `company_denied`, `erp_validation_failed` | The draft payload was refused, before or by ERPNext | Correct the proposal |
 | `duplicate_found` | The business reference already exists in ERPNext | Review the existing document |
 | `operation_conflict`, `reconcile_conflict` | The marker points at a different document, or at several | An administrator investigates in ERPNext |

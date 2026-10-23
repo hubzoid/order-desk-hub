@@ -27,9 +27,10 @@ Nothing reaches a real ERP.
 ## On the call
 
 **0:00 The problem (one minute).** Ask how orders and supplier invoices reach
-them today and who types them into the ERP. Say what the desk does in one line:
-it reads the messy inbox and leaves drafts in ERPNext, with every value tied to
-its source, and asks when it is not sure.
+them today and who types them up. Say what the desk does in one line: it reads
+the messy inbox and turns every order and invoice into a record you review, with
+reports, every value tied to its source, and it asks when it is not sure. An ERP
+is optional: with ERPNext it also leaves drafts there.
 
 **1:00 Load the inbox (two to three minutes).** Run `hubzoid-desk sample load .`
 in a terminal they can see. Twelve messages arrive through Hubzoid intake: email
@@ -46,7 +47,12 @@ cases are ready for an owner and two have a question. Read the two questions out
 
 Say: these are the cases a careless tool would have guessed. The desk asks.
 
-**5:00 One order, line by line (two minutes).** Ask to see the HF-7010 order
+**4:30 Reports without an ERP (one minute).** Accept one order's record (`desk_review_record`
+in chat, or `hubzoid-desk review-record`) and ask "Show the order totals". Only
+accepted records count, currencies stay separate, and anything unreviewed is
+listed as excluded rather than counted as zero.
+
+**5:00 With ERPNext: one order, line by line (two minutes, optional).** Ask to see the HF-7010 order
 (its case number is in the queue). Point at one line: the source text, the rule that matched it (an exact code or an
 alias row), the unit conversion and the price list rate. Money is exact to the
 cent. Then claim the case and say "Save the ERP draft." Show the draft in the
@@ -76,6 +82,8 @@ sample, or have us run it for you on your ERPNext.
 
 ## Questions people ask
 
+- **Do we need an ERP?** No. Records, questions and the four reports work from
+  the inbox alone. ERPNext drafts are an optional addon.
 - **Which ERPs?** ERPNext today. Others are plans, not support.
 - **What does it need from ERPNext?** One integration user that can read the
   listed records and create two draft types, one custom field installed by an
