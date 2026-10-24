@@ -2,12 +2,14 @@ version: 1
 doctor:
   - id: desk.storage
     entrypoint: doctor/desk.py:storage
+    timeout_seconds: 30
     required: true
   - id: desk.sdk
     entrypoint: doctor/desk.py:sdk
     required: true
   - id: desk.rules
     entrypoint: doctor/desk.py:rules
+    timeout_seconds: 30
     required: true
   - id: desk.erp
     entrypoint: doctor/desk.py:erp
