@@ -41,14 +41,12 @@ Every document is a work item. A restart resumes it from its last saved stage, a
 
 You need Python 3.11 or later, Git, and Claude Code or Codex signed in on this machine. No API key. The quick start uses the labelled sample, so you need no Gmail and no ERP.
 
-Paste this into Claude Code or Codex from the cloned folder:
+Paste this into Claude Code or Codex:
 
 ```text
-Read skills/setup/SKILL.md. Install the Order & Invoice Desk from this folder
-and run the labelled sample first. Show me the queue, one order and one invoice
-with every line's source, and the two cases that came back as questions. Then
-accept one order and one invoice and show me the reports. Do not connect Gmail,
-enable ERP writes or send email.
+Clone https://github.com/hubzoid/order-desk-hub into a folder called
+order-desk, cd in, and follow skills/setup/SKILL.md to run the labelled sample.
+Do not connect Gmail, enable ERP writes or send email.
 ```
 
 Or by hand:
@@ -62,7 +60,7 @@ pip install -e '.[parsing]'
 hubzoid-desk parser prefetch
 ```
 
-`parser prefetch` downloads the model assets for PDFs and images, once. Load the sample and start the desk:
+`parser prefetch` downloads the model assets for PDFs and images, once. The sample runs on Claude Code. For Codex, set `MODEL=codex-local` in `.env` for chat, and `engine: codex-local` with a Codex model in `agents/desk-extractor/AGENTS.md` for extraction. Then load the sample and start the desk:
 
 ```bash
 hubzoid-desk sample install .
@@ -77,7 +75,7 @@ hubzoid-desk sample load .
 hubzoid-desk list .
 ```
 
-The sample is a fictional distributor, Synthetic Meridian Distribution, with orders and invoices as email text, a PDF, a spreadsheet, a chat message and an image. It runs on Claude Code. For Codex, set `MODEL=codex-local` in `.env` for chat, and `engine: codex-local` with a Codex model in `agents/desk-extractor/AGENTS.md` for extraction.
+Run `hubzoid-desk list .` again until no case is "received", usually 2 to 4 minutes. The sample is a fictional distributor, Synthetic Meridian Distribution, with orders and invoices as email text, a PDF, a spreadsheet, a chat message and an image.
 
 In the web chat at **http://127.0.0.1:8711**, ask:
 
