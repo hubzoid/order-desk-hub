@@ -10,40 +10,61 @@
 <p align="center">Every line tied to its source. A question instead of a guess. Reports without an ERP.</p>
 <p align="center">
   <a href="https://youtu.be/GaONTBNsZdk">Watch the video</a> ·
+  <a href="#quick-start">Quick start</a> ·
   <a href="skills/setup/SKILL.md">Setup guide</a> ·
   <a href="docs/inbox-records.md">Records and reports</a> ·
-  <a href="docs/erpnext-setup.md">ERPNext</a> ·
   <a href="https://github.com/hubzoid/hubzoid">Hubzoid</a>
 </p>
 <p align="center">
   <a href="https://github.com/hubzoid/hubzoid"><img src="https://img.shields.io/badge/Built%20on-Hubzoid-B5471F" alt="Built on Hubzoid"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-0B0B0C" alt="Apache License 2.0"></a>
+  <a href="https://github.com/hubzoid/hubzoid/discussions"><img src="https://img.shields.io/badge/Community-Discussions-0B0B0C?logo=github" alt="GitHub Discussions"></a>
 </p>
 
-**The Order & Invoice Desk is a ready-to-use Hubzoid hub that reads customer
-orders and supplier invoices from your Gmail, turns each one into a sourced
-record, and gives you reports, with no ERP required.** Anything the rules do not
-decide comes back as a question for a person. Connect ERPNext when you want
-master-data checks and reviewed drafts or submission.
+**The Order & Invoice Desk is a ready-to-use Hubzoid hub that reads customer orders and supplier invoices from your Gmail, turns each one into a sourced record, and gives you reports, with no ERP required.** Anything the rules do not decide comes back as a question for a person. Connect ERPNext when you want master-data checks and reviewed drafts or submission.
 
 <p align="center">
   <a href="https://youtu.be/GaONTBNsZdk"><img alt="Watch: from inbox to entry, with every line sourced" src="https://img.youtube.com/vi/GaONTBNsZdk/maxresdefault.jpg" width="640"></a>
 </p>
 
-## How it works for you
+## How it works
 
-| Step | What the desk does |
+- **Intake** reads email text, PDFs, images and spreadsheets from the mailbox or label you choose. Senders are allowed by an explicit sender policy. Unknown senders are quarantined until a person releases the message.
+- **Extractor** turns each document into a versioned record: party, references, dates, currency, lines, taxes and totals, with field-level evidence from the source.
+- **Rules** decide what they can: your aliases, unit conversions and policies, each with its source. A conflicting total, an unsupported tax basis or a possible duplicate becomes an exception for a person to resolve.
+- **Review** is a person's step. Correct a field or accept a validated record. Every correction is a new revision, and the original extraction is kept.
+- **Reports** count only the latest accepted revision of each document. Unknown amounts, conflicting totals, duplicate candidates and unreviewed records stay visible for review and out of the totals.
+
+Every document is a work item. A restart resumes it from its last saved stage, and a saved stage never runs twice. [Architecture](docs/ARCHITECTURE.md)
+
+## How work arrives
+
+| You do | The desk does |
 |---|---|
-| Orders and invoices arrive in Gmail | Reads email text, PDFs, images and spreadsheets from the mailbox or label you choose, including a bounded history import. |
-| Each document is read | Becomes a versioned record: party, references, dates, currency, lines, taxes and totals, with field-level evidence from the source. |
-| Something is unclear | A conflicting total, an unsupported tax basis or a possible duplicate becomes an exception for a person to resolve. |
-| You review | Correct a field or accept a validated record. Every correction is a new revision, and the original extraction is kept. |
-| You need the numbers | Four reports: a CSV register, order summary, invoice totals and exception aging. |
+| Point it at a Gmail label or a business mailbox | Reads new orders and invoices as they arrive, and turns each into a sourced record. |
+| Import a bounded stretch of history | Reads past mail from the dates and query you choose, once. |
+| Ask in the web chat, or from Claude Code, ChatGPT or Codex over MCP | Answers from the records: *"What is in the desk queue?"*, *"Show the invoice totals for October"*, *"Export the register"*. |
+| Open a case | Shows each source line beside its proposal and the rule that decided it. |
+| Resolve an exception | Records your answer as a new revision. A correction you want for every document becomes a proposed shared rule. |
+| Turn on ERPNext | Matches items by exact code or alias, checks prices, units and receipts, and prepares drafts in the mode you choose. |
 
-## Get your first useful result
+Four reports come from the same records: a CSV register, an order summary, invoice totals and exception aging. [Records and reports](docs/inbox-records.md)
 
-You need Python 3.11 or later and Claude Code or Codex signed in on this
-machine. Installing the desk installs Hubzoid 2.0.1 or later. Gmail uses an OAuth client you own.
+## Quick start
+
+You need Python 3.11 or later, Git, and Claude Code or Codex signed in on this machine. No API key. The quick start uses the labelled sample, so you need no Gmail and no ERP.
+
+Paste this into Claude Code or Codex from the cloned folder:
+
+```text
+Read skills/setup/SKILL.md. Install the Order & Invoice Desk from this folder
+and run the labelled sample first. Show me the queue, one order and one invoice
+with every line's source, and the two cases that came back as questions. Then
+accept one order and one invoice and show me the reports. Do not connect Gmail,
+enable ERP writes or send email.
+```
+
+Or by hand:
 
 ```bash
 git clone https://github.com/hubzoid/order-desk-hub order-desk
@@ -54,29 +75,7 @@ pip install -e '.[parsing]'
 hubzoid-desk parser prefetch
 ```
 
-Then set it up with your coding assistant, from this folder:
-
-```text
-Read skills/setup/SKILL.md. Set up an inbox-only Order & Invoice Desk using my
-installed runtime. Help me select a bounded business-mail query or existing
-label and dates, inspect the proposed files and permissions, and connect my
-customer-owned Gmail OAuth client. Keep secrets out of chat. Show useful records
-and all four reports, resolve one exception, then propose a sourced reusable
-correction and test it on a separate example. Do not enable ERP writes or send
-email.
-```
-
-The [setup guide](skills/setup/SKILL.md) holds the exact commands: the setup
-preview, the Gmail connection, the history import, access grants and the
-correction loop. Email text, CSV and XLSX work without the `parsing` extra. PDFs
-and images use it.
-
-<details>
-<summary>Try the labelled sample first</summary>
-
-A fictional distributor, Synthetic Meridian Distribution, with orders and
-invoices as email text, a PDF, a spreadsheet, a chat message and an image, and a
-sample ERPNext backend:
+`parser prefetch` downloads the model assets for PDFs and images, once. Load the sample and start the desk:
 
 ```bash
 hubzoid-desk sample install .
@@ -91,102 +90,67 @@ hubzoid-desk sample load .
 hubzoid-desk list .
 ```
 
-The sample runs on Claude Code. For Codex, set `MODEL=codex-local` in `.env` for
-chat, and `engine: codex-local` with a Codex model in
-`agents/desk-extractor/AGENTS.md` for extraction.
+The sample is a fictional distributor, Synthetic Meridian Distribution, with orders and invoices as email text, a PDF, a spreadsheet, a chat message and an image. It runs on Claude Code. For Codex, set `MODEL=codex-local` in `.env` for chat, and `engine: codex-local` with a Codex model in `agents/desk-extractor/AGENTS.md` for extraction.
 
-Open the web app, ask *"What is in the desk queue?"*, and open a case. Each
-source line sits beside its proposal and the rule that decided it. Two cases
-come back as questions: an item that matches two products, and an invoice that
-bills 50 when only 40 were received and not yet billed.
+In the web chat at **http://127.0.0.1:8711**, ask:
 
-</details>
+> What is in the desk queue?
 
-## Four reports
+You see ten cases ready and two that came back as questions: an item that matches two products, and an invoice that bills 50 when only 40 were received and not yet billed. Open a case to see each source line beside its proposal and the rule that decided it.
 
-```bash
-hubzoid-desk report . register --csv > orders-and-invoices.csv
-hubzoid-desk report . orders --start 2026-10-01 --end 2026-11-01 --json
-hubzoid-desk report . invoices --start 2026-10-01 --end 2026-11-01 --json
-hubzoid-desk report . exceptions --json
-```
+<!-- Screenshot: a case page with each source line beside its proposal and the rule that decided it. -->
 
-In chat, or through the same tools over MCP, ask *"Show the invoice totals for
-October"* or *"Export the register"*. Only the latest accepted revision of each
-document counts toward totals. Unknown amounts, conflicting totals, duplicate
-candidates and unreviewed records stay visible for review and out of the
-totals. Currencies and original units stay separate. Money uses Decimal, with
-exact reconciliation at stated precision. [How records and reports work →](docs/inbox-records.md)
+The [setup guide](skills/setup/SKILL.md) holds the same steps for your coding assistant, and the steps to accept records and run the reports on the sample.
+
+## Connect your own inbox
+
+1. **Preview the setup.** `hubzoid-desk setup . --company 'My Company' --runtime claude-local --mailbox ops@example.org ...` shows the exact file diff and the mail scope it will read. Choose one existing business label, or explicitly approve the whole inbox. Apply only after you have read the diff.
+2. **Connect Gmail with your own OAuth client.** You store the client secret yourself with `hubzoid secrets set`, never in chat. A person opens the Google consent link and completes sign-in. [Setup guide](skills/setup/SKILL.md), steps 3 and 4, has the exact commands and scopes.
+3. **Import a bounded history and grant access.** Choose a query and dates for past mail. An administrator grants the mailbox owner the desk permissions and the source grant setup returned. Each mailbox has its own access scope.
+
+Email text, CSV and XLSX work without the `parsing` extra. PDFs and images use it. [Setup guide](skills/setup/SKILL.md)
 
 ## Make it yours
 
-Your rules, aliases and unit conversions live in `knowledge/record-rules.md`,
-with their sources in `knowledge/sources/`.
+The files you will edit, and what each one changes:
 
-1. **Start from your examples.** Your coding assistant reads selected
-   representative documents and your company rules, then proposes aliases,
-   conversions and typed rules, each with its source.
-2. **Test before you activate.** With the proposed rules in your working copy,
-   run `hubzoid-desk preview . FILE --json` on separate holdout documents, and
-   `hubzoid-desk rules check .` to validate the file.
-3. **Save a correction.** In chat, `desk_propose_record_rules` prepares the exact
-   change. On a writable hub it is stored as a pending Hub change; on read-only
-   hosting it returns the diff for your builder checkout. The owner reviews and
-   activates it, and new documents follow it.
+```text
+order-desk/
+├── AGENTS.md                        the desk assistant in chat
+├── agents/desk-extractor/AGENTS.md  how documents are read into records. Set engine: codex-local for Codex
+├── knowledge/
+│   ├── record-rules.md              your rules, aliases and unit conversions, each with its source
+│   ├── sku-aliases.csv              the names your customers and suppliers use for your items, with unit factors
+│   ├── unit-words.csv               the unit words in your documents
+│   ├── order-policy.md              how orders are checked
+│   ├── invoice-policy.md            how invoices are checked
+│   └── sources/                     the source behind each rule
+├── hub.settings.yaml                sources, intake, limits
+├── connectors/erpnext.yaml          the optional ERPNext connection
+└── work-items.yaml                  ERP write mode: off, draft or approve
+```
 
-A correction made on one case stays with that case until it is saved as a
-shared rule.
+Start from your examples. Your coding assistant reads representative documents and your company rules, then proposes aliases, conversions and typed rules, each with its source. Test before you activate: `hubzoid-desk preview . FILE --json` on separate holdout documents, and `hubzoid-desk rules check .` to validate the file.
 
-## Add ERPNext
-
-Set `DESK_ERP_ENABLED: true` in `hub.settings.yaml`, configure
-`connectors/erpnext.yaml`, and follow [ERPNext setup](docs/erpnext-setup.md).
-The desk then matches items by exact code or alias, checks prices, units and
-receipts, and can write to ERPNext in the mode you choose in `work-items.yaml`:
-
-| Mode | What the desk may do |
-|---|---|
-| `off` | Prepare proposals. Nothing is written to the ERP. |
-| `draft` | Save inert drafts (docstatus 0) for a person to finish in ERPNext. |
-| `approve` | Also submit, after the person who asked approves the exact draft. |
-
-Every line keeps its source. Grants, rule revision, draft content and the ERP
-version are rechecked at dispatch. The desk refuses an invoice that bills more
-than was received and not yet billed, and a bill number or customer PO already
-in ERPNext.
-Every ERP write is recorded before it is sent, and an uncertain outcome is
-reconciled from ERPNext, never resent on a guess.
+To save a rule from chat, tell the desk *"In our orders, a carton of SYN-ITEM-001 is twelve units."* It prepares the exact change as a pending Hub change. The owner reviews and activates it, and new documents follow it. A correction made on one case stays with that case until it is saved as a shared rule. [Rule authoring](docs/rule-authoring.md)
 
 ## Safety
 
-- Document text, sender names and descriptions are data. Instructions inside
-  them are flagged and ignored.
-- Senders are allowed by an explicit sender policy. Unknown senders are
-  quarantined until a person releases the message.
-- In inbox mode, each connected mailbox has its own access scope: a team member
-  sees its records only with that mailbox's grant. With ERPNext on, cases are
-  shared with everyone who has the `desk_view` permission.
-- The desk sends no email and never posts to an ERP on its own. A model, a
-  document or a workflow can never approve.
+- **The desk sends no email and never posts to an ERP on its own.** A model, a document or a workflow can never approve. Writes to ERPNext wait for the mode you choose, and `approve` mode waits for the person who asked to approve the exact draft.
+- **Each mailbox has its own access scope.** A team member sees its records only with that mailbox's grant. Senders never become members.
+- **Documents are data, never instructions.** Document text, sender names and descriptions are read as data. Instructions inside them are flagged and ignored.
 
-## The folder
+Money uses Decimal, with exact reconciliation at stated precision. Currencies and original units stay separate. Every ERP write is recorded before it is sent, and an uncertain outcome is reconciled from ERPNext, never resent on a guess. [ERPNext setup](docs/erpnext-setup.md)
 
-```
-AGENTS.md                       the desk assistant in chat
-agents/desk-extractor/          the extraction station and its JSON schema
-workflows/order_invoice/        the intake and case work-item workflows
-tools_local/order_invoice.py    chat and MCP tools: queue, case, review, reports, rules
-knowledge/                      record rules, ERP policies, aliases, unit words, sources
-connectors/erpnext.yaml         the optional ERPNext connection
-work-items.yaml  hitl.yaml      ERP write modes and the approval card policy
-desk/                           records, reports, cases and the CLI
-erp/                            the ERPNext adapter and the distributor-v1 sample dataset
-skills/setup/                   the setup recipe for your coding assistant
-evals/ tests/                   behaviour checks and the test suite
-```
+## Host it for your team
 
-Records, operations and artifacts live in the Hubzoid data root
-(`HUBZOID_DATA_DIR`). Back it up with the source revision you run.
+The desk runs on a server the same way any Hubzoid hub does: one image built from this repository, one durable folder at `/data`, sign-in on, and one public address. Three things are specific to the desk:
+
+- **`HUBZOID_SCHEDULES=1`**, so intake and case work run in the background.
+- **`HUBZOID_PUBLIC_URL`**, your hub's HTTPS address, which the Google OAuth callback uses.
+- **Your data root.** Records, operations and artifacts live in `HUBZOID_DATA_DIR`. Back it up with the source revision you run.
+
+Grant each person the mailbox scopes they need, and nothing more. [Operator guide](docs/operator-guide.md) covers running the desk day to day. [Limits and recovery](docs/limits-and-recovery.md) covers limits, upgrades and recovery. [Hubzoid deployment](https://github.com/hubzoid/hubzoid/blob/main/docs/deploy/README.md) lists the hosting options and which are verified.
 
 ## Go further
 
@@ -197,9 +161,10 @@ Records, operations and artifacts live in the Hubzoid data root
 | Write and test company rules | [Rule authoring](docs/rule-authoring.md) |
 | Connect ERPNext | [ERPNext setup](docs/erpnext-setup.md) |
 | Run the desk day to day | [Operator guide](docs/operator-guide.md) |
+| Limits, upgrades and recovery | [Limits and recovery](docs/limits-and-recovery.md) |
 | Look up an error | [Errors](docs/errors.md) |
 | How it fits together | [Architecture](docs/ARCHITECTURE.md) |
 
-The Order & Invoice Desk is **Apache-2.0**. ERPNext is a separate application,
-and none of its code is in this repository. Built on [Hubzoid](https://github.com/hubzoid/hubzoid).
-Need it running for your team? [Build with us](https://hubzoid.com/enterprise).
+Questions go to [GitHub Discussions](https://github.com/hubzoid/hubzoid/discussions). Bugs in the desk go to [this repository's issues](https://github.com/hubzoid/order-desk-hub/issues).
+
+The Order & Invoice Desk is **Apache-2.0**. ERPNext is a separate application, and none of its code is in this repository. Built on [Hubzoid](https://github.com/hubzoid/hubzoid). Need it running for your team? [Build with us](https://hubzoid.com/build-with-us).
