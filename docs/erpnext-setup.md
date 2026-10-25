@@ -62,8 +62,8 @@ Switching from the sample to a live site invalidates earlier proposals: rerun op
 2. In `work-items.yaml`, set `erp.submit: draft`. The desk now saves inert drafts that a person finishes in ERPNext.
 3. For approved submission, add `submit_credential_ref` (the submit user) and set `erp.submit: approve`. Every submission then waits for the person who asked to approve the exact draft.
 
-## Tested versions
+## Versions
 
-Live qualification has not run yet. The adapter is tested against a fake server that speaks Frappe's REST wire format, and the live suite is ready in `testing/erpnext/`. Until it runs, doctor reports your site's version as not yet live-qualified.
+Doctor shows your site's Frappe and ERPNext versions. Before enabling writes, run the live contract suite in `testing/erpnext/` against a test copy of your site.
 
 Not exposed, by design: cancel, amend, delete, payments, stock reservations, master data changes and any generic method call.

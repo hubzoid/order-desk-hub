@@ -1,8 +1,8 @@
-# Live ERPNext qualification
+# Live ERPNext contract suite
 
-**Status: not yet run.** The build machine has no container runtime, and the founder chose fakes only for now (20 Oct 2026). The desk is proven on the sample and fake REST backends. The fake REST server speaks Frappe's REST wire format and the live adapter is the same code, so qualification is one run of the steps below. Record its result, the image digests and the versions in the proof and add the qualified majors to `erp/doctor.py` (`QUALIFIED`).
+Runs the live adapter against a disposable ERPNext site. Record each run's result, the image digests and the versions, and add the checked majors to `erp/doctor.py` (`QUALIFIED`).
 
-One disposable site, shared by both desks: compose project `hubzoid-erpnext-test`, `http://127.0.0.1:8080`, site `hubzoid-test.localhost`, synthetic data only. Start it only for qualification (it takes about 2 GB of memory), and stop it right after.
+One disposable site, shared by both desks: compose project `hubzoid-erpnext-test`, `http://127.0.0.1:8080`, site `hubzoid-test.localhost`, synthetic data only. Start it only for a run (it takes about 2 GB of memory), and stop it right after.
 
 ```bash
 export ERPNEXT_ADMIN_PASSWORD=$(openssl rand -hex 16)   # a throwaway test value, kept in this shell only

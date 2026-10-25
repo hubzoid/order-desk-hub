@@ -134,7 +134,7 @@ def check_model(hub: Path) -> dict:
         from shutil import which
         command = "codex" if station.engine == "codex-local" else "claude"
         available = bool(which(command))
-        return _c("desk.model", "ok" if available else "warn", f"Extractor uses {station.engine}; {command} installed: {available}. Login still needs runtime qualification.",
+        return _c("desk.model", "ok" if available else "warn", f"Extractor uses {station.engine}; {command} installed: {available}. Doctor does not check the login itself.",
                   "hubzoid stations doctor .")
     except Exception as exc:
         return _c("desk.model", "warn", f"Extractor configuration needs verification ({type(exc).__name__}).", "hubzoid stations doctor .")
@@ -187,7 +187,7 @@ def check_sdk(hub: Path) -> dict:
 
     lock = hub / "hub.lock.json"
     if not lock.is_file():
-        return _c("desk.sdk", "warn", "No SDK lock. Use the tested immutable SDK revision before qualification.")
+        return _c("desk.sdk", "warn", "No SDK lock. Pin the immutable SDK revision in hub.lock.json before going live.")
     try:
         sdk = json.loads(lock.read_text())["sdk"]
     except (OSError, ValueError, KeyError, TypeError):
@@ -200,8 +200,8 @@ def check_sdk(hub: Path) -> dict:
             raise ValueError("invalid commit")
     except (OSError, ValueError, KeyError, TypeError):
         return _c("desk.sdk", "fail", "hub.lock.json does not contain a readable immutable SDK commit.",
-                  "Restore the reviewed SDK lock before qualification.")
-    recovery = "Install the exact tested SDK commit, then rerun doctor. A moving branch is not a qualification pin."
+                  "Restore the reviewed SDK lock before going live.")
+    recovery = "Install the exact locked SDK commit, then rerun doctor. A moving branch is not a pin."
 
     def unknown(reason: str) -> dict:
         return _c("desk.sdk", "fail", "Installed SDK revision cannot be verified: " + reason, recovery,
@@ -300,7 +300,7 @@ def check_storage(hub: Path) -> dict:
                     return _c("desk.storage", "fail", "ERP addon is disabled while existing ERP cases or pending operations remain.",
                               "Preserve the existing ERP workflow and reconcile it before an explicitly reviewed inbox-only conversion.")
     except StoreError as exc:
-        return _c("desk.storage", "fail", exc.message, "Follow the reviewed data-root move in docs/qualification.md; preserve deployment-id and receipts.", code=exc.code)
+        return _c("desk.storage", "fail", exc.message, "Follow the reviewed data-root move in docs/limits-and-recovery.md; preserve deployment-id and receipts.", code=exc.code)
     return _c("desk.storage", "ok", "Existing desk/ERP identity is preserved in the configured SDK data root.")
 
 

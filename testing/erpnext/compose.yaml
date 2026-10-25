@@ -1,12 +1,11 @@
-# The disposable ERPNext test site for live qualification of the desks' ERP module.
+# The disposable ERPNext test site for the live contract suite of the desks' ERP module.
 #
 #   docker compose -p hubzoid-erpnext-test -f testing/erpnext/compose.yaml up -d --wait
 #   docker compose -p hubzoid-erpnext-test -f testing/erpnext/compose.yaml down -v
 #
 # A synthetic company only, on http://127.0.0.1:8080, never a production site. Official Frappe images,
-# pinned. Adapted from frappe_docker's pwd.yml (MIT). NOT YET RUN: this Mac has no container runtime,
-# so live qualification is on the later list (founder decision, 20 Oct 2026). The tags below name the
-# releases current on 2026-10-15 and must be confirmed (and recorded with their digests) on the first run.
+# pinned. Adapted from frappe_docker's pwd.yml (MIT). The tags below name the releases
+# current on 2026-10-15. Record their digests with each run.
 x-erpnext: &erpnext
   image: frappe/erpnext:${ERPNEXT_VERSION:-v16.51.1}
   platform: linux/amd64
