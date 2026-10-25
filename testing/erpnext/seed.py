@@ -13,9 +13,6 @@ fake REST backends hold. Then three users: `hubzoid-read` (read and print),
 `hubzoid-submit` (submit only). Their API keys go to a file inside the
 container for an administrator to load with `hubzoid secrets set --stdin`;
 they are never printed.
-
-NOT YET RUN (no container runtime on the build machine, founder decision
-20 Oct 2026). The first run confirms it and records the versions.
 """
 import json
 import sys

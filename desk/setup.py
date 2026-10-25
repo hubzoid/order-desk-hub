@@ -98,7 +98,7 @@ def preview(hub_dir, *, company: str, runtime: str, mailbox: str = "", client_id
     digest = "sha256:" + hashlib.sha256(json.dumps({"edits": edits, "ongoing_scope": ongoing_scope}, sort_keys=True).encode()).hexdigest()
     scope = "desk_source_" + hashlib.sha256((channel + (":" + ongoing_scope["mailbox"].lower() if ongoing_scope["mailbox"] else "")).encode()).hexdigest()[:16]
     return {"digest": digest, "edits": edits, "runtime": runtime, "erp_enabled": False,
-            "source_grant": scope, "ongoing_scope": ongoing_scope, "costs": "Uses selected installed runtime authentication. Qualify unattended/hosted auth separately.",
+            "source_grant": scope, "ongoing_scope": ongoing_scope, "costs": "Uses selected installed runtime authentication. Unattended/hosted use needs authentication the provider supports for it.",
             "handoffs": ["Set OAuth secret through hubzoid secrets, then apply the channel and complete external Google consent.",
                          "Use exact sender allowlist or explicit intake quarantine review. A sender is not a member.",
                          f"An authorized host administrator grants desk_view, desk_operate, wf_order_invoice_intake and {scope} to the mailbox owner.",

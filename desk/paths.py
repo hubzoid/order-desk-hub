@@ -37,7 +37,7 @@ def check_data_root(hub_dir) -> None:
     legacy = hub / ".hubzoid" / "data"
     target = state(hub) / "data"
     if target.resolve() != legacy.resolve() and any((legacy / name).exists() for name in ("desk", "erp")):
-        raise StoreError("data_root_migration_required", "Legacy desk/ERP state exists under .hubzoid/data. Stop workers, back up, then explicitly move existing desk and ERP state to the configured data root, preserving deployment-id, records and operation receipts. See docs/qualification.md.", status=409)
+        raise StoreError("data_root_migration_required", "Legacy desk/ERP state exists under .hubzoid/data. Stop workers, back up, then explicitly move existing desk and ERP state to the configured data root, preserving deployment-id, records and operation receipts. See docs/limits-and-recovery.md.", status=409)
 
 
 def data_dir(hub_dir) -> Path:

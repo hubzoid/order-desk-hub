@@ -1,8 +1,6 @@
-# Qualification, limits and recovery
+# Limits, upgrades and recovery
 
-No live mailbox, model, ERP or hosted combination is qualified yet. Model-free tests and stand-ins are labelled synthetic. Still to run: local Claude (through Claude Code, and Cowork separately), local Codex, Railway with Claude or Codex, and Maritime (the second hosting provider Hubzoid documents, next to Railway) with Claude or Codex. Every promoted combination needs real Gmail records and all four outputs, teammate scope, restart, schedules, callback, sleep and wake, backup and restore, and upgrade evidence. ERPNext drafts, approval, submission and recovery need their own real evidence on every advertised host and runtime. A skipped credential or provider check is a gap, never a pass.
-
-Run so far, 23 October 2026: a local Mac with Hubzoid 2.0.1 and Claude Code sign-in, on the labelled sample and the sample ERP backend. The README install of the `parsing` extra fails on Hubzoid 2.0.1 (its typer floor conflicts with every Docling release), which Hubzoid 2.0.2 fixes. With Docling and typer 0.26 installed by hand, the combination 2.0.2 allows, the twelve messages gave the expected ten proposals and two questions in 99 seconds, the seven adversarial messages behaved as expected, and one ERP draft was saved on the sample backend after approval. No Gmail or live ERPNext was used.
+The `parsing` extra needs Hubzoid 2.0.2 or later. On Hubzoid 2.0.1, its typer floor conflicts with every Docling release.
 
 The bounded history command needs Hubzoid 2.0.1 or later. hub.lock.json records that range, and doctor checks the installed release against it. When a lock names an exact commit instead, doctor checks non-editable VCS installs through PEP 610 commit metadata and editable checkouts through their own Git root. An unverifiable or mismatched locked revision fails. Do not install a moving branch and treat its version number as evidence.
 

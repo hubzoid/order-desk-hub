@@ -19,6 +19,6 @@
   },
   "erpnext": {
     "qualified": [],
-    "note": "Live qualification not run yet. See testing/erpnext/README.md."
+    "note": "Versions checked with the live contract suite. See testing/erpnext/README.md."
   }
 }

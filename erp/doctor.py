@@ -31,8 +31,8 @@ HOOKS = (
     ("Auto Repeat", [["disabled", "=", 0]], "reference_doctype"),
 )
 WRITE_DOCTYPES = ["Sales Order", "Purchase Invoice"]
-#: Frappe and ERPNext major versions this connector has passed the live contract suite on. Empty until the
-#: first live qualification run (tests/live/), which adds the versions it ran against.
+#: Frappe and ERPNext major versions this connector has passed the live contract suite on (tests/live/).
+#: Other versions get a warning to run the suite against a test copy of the site first.
 QUALIFIED: dict[str, tuple[str, ...]] = {"frappe": (), "erpnext": ()}
 
 
@@ -105,7 +105,7 @@ def run(service, *, probe_resources: bool = True) -> dict:
             extra = sorted(set(versions) - {"frappe", "erpnext"} - set(cfg.qualified_apps))
             checks.append(_check("versions", "warn" if bad else "ok",
                                  f"Versions: {', '.join(f'{a} {v}' for a, v in sorted(versions.items()))}."
-                                 + (f" Not yet live-qualified: {', '.join(bad)}." if bad else ""),
+                                 + (f" Check on a test copy before enabling writes: {', '.join(bad)}." if bad else ""),
                                  "Run the live contract suite against a test copy of this site before enabling "
                                  "writes (testing/erpnext/README.md)" if bad else None,
                                  versions=versions, unqualified_apps=extra))
