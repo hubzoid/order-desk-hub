@@ -37,19 +37,6 @@
 
 Every document is a work item. A restart resumes it from its last saved stage, and a saved stage never runs twice. [Architecture](docs/ARCHITECTURE.md)
 
-## How work arrives
-
-| You do | The desk does |
-|---|---|
-| Point it at a Gmail label or a business mailbox | Reads new orders and invoices as they arrive, and turns each into a sourced record. |
-| Import a bounded stretch of history | Reads past mail from the dates and query you choose, once. |
-| Ask in the web chat, or from Claude Code, ChatGPT or Codex over MCP | Answers from the records: *"What is in the desk queue?"*, *"Show the invoice totals for October"*, *"Export the register"*. |
-| Open a case | Shows each source line beside its proposal and the rule that decided it. |
-| Resolve an exception | Records your answer as a new revision. A correction you want for every document becomes a proposed shared rule. |
-| Turn on ERPNext | Matches items by exact code or alias, checks prices, units and receipts, and prepares drafts in the mode you choose. |
-
-Four reports come from the same records: a CSV register, an order summary, invoice totals and exception aging. [Records and reports](docs/inbox-records.md)
-
 ## Quick start
 
 You need Python 3.11 or later, Git, and Claude Code or Codex signed in on this machine. No API key. The quick start uses the labelled sample, so you need no Gmail and no ERP.
@@ -102,13 +89,17 @@ You see ten cases ready and two that came back as questions: an item that matche
 
 The [setup guide](skills/setup/SKILL.md) holds the same steps for your coding assistant, and the steps to accept records and run the reports on the sample.
 
-## Connect your own inbox
+## Integrations
 
-1. **Preview the setup.** `hubzoid-desk setup . --company 'My Company' --runtime claude-local --mailbox ops@example.org ...` shows the exact file diff and the mail scope it will read. Choose one existing business label, or explicitly approve the whole inbox. Apply only after you have read the diff.
-2. **Connect Gmail with your own OAuth client.** You store the client secret yourself with `hubzoid secrets set`, never in chat. A person opens the Google consent link and completes sign-in. [Setup guide](skills/setup/SKILL.md), steps 3 and 4, has the exact commands and scopes.
-3. **Import a bounded history and grant access.** Choose a query and dates for past mail. An administrator grants the mailbox owner the desk permissions and the source grant setup returned. Each mailbox has its own access scope.
+| Works with | What the desk does |
+|---|---|
+| Gmail | Reads new orders and invoices from one business label or mailbox you choose, plus a bounded history import. You connect it with your own Google OAuth client. [Setup guide](skills/setup/SKILL.md) |
+| ERPNext (optional) | Matches items by exact code or alias, checks prices, units and receipts, and saves drafts or submits them in the mode you choose. [ERPNext setup](docs/erpnext-setup.md) |
+| The web chat, and Claude Code, ChatGPT and Codex over MCP | Answers from the records: *"What is in the desk queue?"*, *"Show the invoice totals for October"*, *"Export the register"*. |
 
-Email text, CSV and XLSX work without the `parsing` extra. PDFs and images use it. [Setup guide](skills/setup/SKILL.md)
+Four reports come from the same records: a CSV register, an order summary, invoice totals and exception aging. [Records and reports](docs/inbox-records.md)
+
+Ready for your own inbox? Ask your coding assistant to follow the [setup guide](skills/setup/SKILL.md). It previews every file change and the mail scope before applying anything, and you store the Google client secret yourself, never in chat. Email text, CSV and XLSX work without the `parsing` extra. PDFs and images use it.
 
 ## Make it yours
 
