@@ -142,11 +142,11 @@ class Desk:
 
     def _deduplicate_record(self, row: dict, conn) -> dict:
         row.pop("duplicate_of", None)
-        keys = ("company", "document_kind", "party", "reference")
-        if row.get("reference") and row.get("party"):
+        key = records_lib.duplicate_key(row)
+        if key is not None:
             for other in reports_lib.latest(self.store.records(self.hub_id, conn=conn)):
                 if (other["record_id"] != row["record_id"] and other.get("status") != "superseded"
-                        and not other.get("duplicate_of") and all(other.get(k) == row.get(k) for k in keys)):
+                        and not other.get("duplicate_of") and records_lib.duplicate_key(other) == key):
                     row["duplicate_of"] = other["record_id"]
                     break
         return row

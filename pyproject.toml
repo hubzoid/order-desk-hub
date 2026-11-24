@@ -24,7 +24,8 @@ dependencies = [
 # at a time, so a hub that only takes email text never imports it.
 parsing = ["docling>=2.60,<3"]
 fixtures = ["reportlab>=4.4,<5"]
-dev = ["pytest>=8"]
+# The tests regenerate the sample dataset, which renders PDFs with reportlab.
+dev = ["pytest>=8", "reportlab>=4.4,<5"]
 
 [project.scripts]
 hubzoid-erp = "erp.cli:main"

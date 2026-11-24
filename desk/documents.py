@@ -44,6 +44,34 @@ class ParseError(Exception):
         self.code, self.message = code, message
 
 
+#: What one file may hand the extractor. A bigger file is refused with a clear reason, never cut short,
+#: so no line is silently dropped. The file size limit alone does not bound this: a small spreadsheet
+#: or CSV can expand into millions of rows or one enormous cell.
+MAX_ELEMENTS = 5000
+MAX_ELEMENT_CHARS = 10_000
+MAX_TEXT_CHARS = 1_000_000
+MAX_XLSX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024
+
+
+class _Budget:
+    def __init__(self, label: str):
+        self.label, self.count, self.chars = label, 0, 0
+
+    def add(self, out: list[dict], element: dict) -> None:
+        size = len(element["text"])
+        self.count, self.chars = self.count + 1, self.chars + size
+        if self.count > MAX_ELEMENTS:
+            raise ParseError("file_too_large", f"{self.label} has more than {MAX_ELEMENTS} rows or lines. "
+                             "Split it into smaller documents.")
+        if size > MAX_ELEMENT_CHARS:
+            raise ParseError("file_too_large", f"{self.label} has a row or line longer than {MAX_ELEMENT_CHARS} "
+                             "characters.")
+        if self.chars > MAX_TEXT_CHARS:
+            raise ParseError("file_too_large", f"{self.label} has more than {MAX_TEXT_CHARS} characters of text. "
+                             "Split it into smaller documents.")
+        out.append(element)
+
+
 @dataclass
 class Limits:
     max_file_bytes: int = 20 * 1024 * 1024
@@ -68,11 +96,13 @@ def media_kind(filename: str, media_type: str | None) -> str | None:
             ".xlsx": "xlsx"}.get(ext)
 
 
-def message_elements(text: str, label: str = "message") -> Parsed:
+def message_elements(text: str, label: str = "message", *, bounded: bool = False) -> Parsed:
     out = []
+    budget = _Budget(label) if bounded else None
     for n, line in enumerate((text or "").splitlines(), 1):
         if line.strip():
-            out.append({"kind": "text", "loc": f"{label} line {n}", "line": n, "text": line.strip()})
+            element = {"kind": "text", "loc": f"{label} line {n}", "line": n, "text": line.strip()}
+            budget.add(out, element) if budget else out.append(element)
     return Parsed(label=label, parser="text", elements=out)
 
 
@@ -91,7 +121,11 @@ def _xlsx(data: bytes, label: str) -> Parsed:
     if b"vbaProject.bin" in data or b"xl/vbaProject" in data[:65536]:
         raise ParseError("file_unsupported", f"{label} contains macros. Save it without macros (XLSX).")
     try:
-        zipfile.ZipFile(io.BytesIO(data)).testzip()
+        archive = zipfile.ZipFile(io.BytesIO(data))
+        if sum(info.file_size for info in archive.infolist()) > MAX_XLSX_UNCOMPRESSED_BYTES:
+            raise ParseError("file_too_large", f"{label} expands to more than "
+                             f"{MAX_XLSX_UNCOMPRESSED_BYTES // (1024 * 1024)} MB when opened.")
+        archive.testzip()
     except zipfile.BadZipFile:
         raise ParseError("parse_failed", f"{label} is not a readable spreadsheet (it may be encrypted or damaged).") \
             from None
@@ -103,19 +137,20 @@ def _xlsx(data: bytes, label: str) -> Parsed:
     except Exception:  # noqa: BLE001
         raise ParseError("parse_failed", f"{label} is not a readable spreadsheet.") from None
     out = []
-    for ws in wb.worksheets:
-        for r, row in enumerate(ws.iter_rows(values_only=True), 1):
-            cells = [_cell(v) for v in row]
-            while cells and not cells[-1]:
-                cells.pop()
-            if not any(cells):
-                continue
-            if len(out) > 5000:
-                raise ParseError("file_too_large", f"{label} has more than 5000 rows.")
-            last = get_column_letter(len(cells))
-            out.append({"kind": "row", "loc": f"{label} {ws.title}!A{r}:{last}{r}", "sheet": ws.title, "row": r,
-                        "cells": cells, "text": " | ".join(c for c in cells)})
-    wb.close()
+    budget = _Budget(label)
+    try:
+        for ws in wb.worksheets:
+            for r, row in enumerate(ws.iter_rows(values_only=True), 1):
+                cells = [_cell(v) for v in row]
+                while cells and not cells[-1]:
+                    cells.pop()
+                if not any(cells):
+                    continue
+                last = get_column_letter(len(cells))
+                budget.add(out, {"kind": "row", "loc": f"{label} {ws.title}!A{r}:{last}{r}", "sheet": ws.title,
+                                 "row": r, "cells": cells, "text": " | ".join(c for c in cells)})
+    finally:
+        wb.close()
     return Parsed(label=label, parser="openpyxl", elements=out)
 
 
@@ -125,10 +160,15 @@ def _csv(data: bytes, label: str) -> Parsed:
     except UnicodeDecodeError:
         raise ParseError("parse_failed", f"{label} is not UTF-8 text.") from None
     out = []
-    for r, row in enumerate(csv.reader(io.StringIO(text)), 1):
-        cells = [c.strip() for c in row]
-        if any(cells):
-            out.append({"kind": "row", "loc": f"{label} row {r}", "row": r, "cells": cells, "text": " | ".join(cells)})
+    budget = _Budget(label)
+    try:
+        for r, row in enumerate(csv.reader(io.StringIO(text)), 1):
+            cells = [c.strip() for c in row]
+            if any(cells):
+                budget.add(out, {"kind": "row", "loc": f"{label} row {r}", "row": r, "cells": cells,
+                                 "text": " | ".join(cells)})
+    except csv.Error:
+        raise ParseError("parse_failed", f"{label} is not a readable CSV file.") from None
     return Parsed(label=label, parser="csv", elements=out)
 
 
@@ -183,20 +223,71 @@ def _docling(data: bytes, label: str, *, ocr: bool, limits: Limits, suffix: str)
         except (ValueError, IndexError):
             raise ParseError("parse_failed", f"{label} could not be read.") from None
     elements = []
+    budget = _Budget(label)
     tables: dict[int, int] = {}
-    for e in out["elements"]:
+    lines: dict[int, int] = {}
+    for e in _join_lines(out["elements"]):
         page = e.get("page") or 1
         if e["kind"] == "row":
             if e.get("row") == 0:
                 tables[page] = tables.get(page, 0) + 1
             t = tables.get(page, 1)
-            elements.append({"kind": "row", "loc": f"{label} page {page} table {t} row {e['row'] + 1}", "page": page,
-                             "row": e["row"] + 1, "cells": e["cells"], "text": e["text"]})
+            budget.add(elements, {"kind": "row", "loc": f"{label} page {page} table {t} row {e['row'] + 1}",
+                                  "page": page, "row": e["row"] + 1, "cells": e["cells"], "text": e["text"]})
+            continue
+        lines[page] = n = lines.get(page, 0) + 1
+        loc = f"{label} page {page} line {n}" if suffix == ".pdf" else f"{label} line {n}"
+        if e["kind"] == "line":
+            budget.add(elements, {"kind": "row", "loc": loc, "page": page, "cells": e["cells"], "text": e["text"]})
         else:
-            n = sum(1 for x in elements if x.get("page") == page and x["kind"] == "text") + 1
-            elements.append({"kind": "text", "loc": f"{label} page {page} line {n}" if suffix == ".pdf"
-                             else f"{label} line {n}", "page": page, "text": e["text"]})
+            budget.add(elements, {"kind": "text", "loc": loc, "page": page, "text": e["text"]})
     return Parsed(label=label, parser=out.get("parser", "docling"), elements=elements, pages=out.get("pages"))
+
+
+def _same_line(a: list, b: list) -> bool:
+    """Two boxes sit on one printed line when they overlap vertically by at least half
+    the taller one. Works for either box origin, so a tall block beside a short line stays apart."""
+    a_low, a_high = sorted((a[1], a[3]))
+    b_low, b_high = sorted((b[1], b[3]))
+    overlap = min(a_high, b_high) - max(a_low, b_low)
+    return overlap > 0 and overlap >= 0.5 * max(a_high - a_low, b_high - b_low)
+
+
+def _join_lines(items: list[dict]) -> list[dict]:
+    """Docling reads a table that has no borders as one text item per cell, so a line's
+    quantity, unit, rate and amount would each be a separate element and the extractor
+    could cite only one of them. Text items on one page that sit on the same printed line
+    are joined left to right into one "line", the way a bordered table row arrives.
+    Table rows, items without a position and items alone on their line pass through."""
+    out: list[dict] = []
+    run: list[dict] = []
+
+    def flush():
+        groups: list[list[dict]] = []
+        for e in run:
+            home = next((g for g in groups if e.get("box") and all(m.get("box") for m in g)
+                         and any(_same_line(m["box"], e["box"]) for m in g)), None)
+            if home is None:
+                groups.append([e])
+            else:
+                home.append(e)
+        for g in groups:
+            if len(g) == 1:
+                out.append({k: v for k, v in g[0].items() if k != "box"})
+                continue
+            cells = [m["text"] for m in sorted(g, key=lambda m: min(m["box"][0], m["box"][2]))]
+            out.append({"kind": "line", "page": g[0].get("page"), "cells": cells, "text": " | ".join(cells)})
+        run.clear()
+
+    for e in items:
+        if e["kind"] != "text" or (run and e.get("page") != run[0].get("page")):
+            flush()
+        if e["kind"] == "text":
+            run.append(e)
+        else:
+            out.append(e)
+    flush()
+    return out
 
 
 def parse_file(data: bytes, filename: str, media_type: str | None, *, limits: Limits | None = None) -> Parsed:
@@ -210,7 +301,7 @@ def parse_file(data: bytes, filename: str, media_type: str | None, *, limits: Li
                          "an image (PNG or JPEG), a spreadsheet (XLSX or CSV) or the order in the message text.")
     if kind == "text":
         try:
-            return message_elements(data.decode("utf-8"), label=label)
+            return message_elements(data.decode("utf-8"), label=label, bounded=True)
         except UnicodeDecodeError:
             raise ParseError("parse_failed", f"{label} is not UTF-8 text.") from None
     if kind == "csv":

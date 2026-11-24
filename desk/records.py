@@ -74,6 +74,59 @@ def number(value) -> Decimal | None:
         return None
 
 
+#: Comma thousands need a decimal point: "1,234.00" is unambiguous, "1,234" may be a decimal comma.
+_GROUPED = re.compile(r"[-+]?(?:\d{1,3}(?:,\d{3})+\.\d+|\d+(?:\.\d+)?)")
+
+
+def stated_number(value, currency: str | None = None) -> Decimal | None:
+    """A stated amount as written on a document: a plain decimal, comma thousands with a
+    decimal point, and the record's own currency code (or $ for USD) before or after it."""
+    exact = number(value)
+    if exact is not None or not isinstance(value, str):
+        return exact
+    text = norm_text(value)
+    code = (currency or "").casefold()
+    tokens = ([code] if re.fullmatch(r"[a-z]{3}", code) else []) + (["us$", "$"] if code == "usd" else [])
+    for token in tokens:
+        if text.startswith(token):
+            text = text[len(token):].strip()
+            break
+        if text.endswith(token):
+            text = text[:-len(token)].strip()
+            break
+    return number(text.replace(",", "")) if _GROUPED.fullmatch(text) else None
+
+
+def canonical_date(value) -> str | None:
+    """A source date in ISO form (2026-10-05), or None when it is not a calendar date."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return date.fromisoformat(value).isoformat()
+    except ValueError:
+        pass
+    found = re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", value.strip())
+    try:
+        return date(*map(int, found.groups())).isoformat() if found else None
+    except ValueError:
+        return None
+
+
+_LEGAL_SUFFIX = re.compile(r"(?:\s+(?:ltd|limited|inc|incorporated|llc|llp|plc|corp|corporation|co|company|"
+                           r"gmbh|ag|sa|sarl|bv|nv|pty|pvt|private))+$")
+
+
+def duplicate_key(row: dict) -> tuple | None:
+    """What makes two records the same document: company, kind, the party without punctuation
+    or a legal suffix ("Supplier Ltd." is "supplier"), and the reference, case-insensitive.
+    A match is only a duplicate candidate for a person to confirm, never a silent merge."""
+    party = _LEGAL_SUFFIX.sub("", re.sub(r"[^\w\s]", " ", norm_text(row.get("party"))).strip())
+    reference = norm_text(row.get("reference"))
+    if not party or not reference:
+        return None
+    return row.get("company"), row.get("document_kind"), " ".join(party.split()), reference
+
+
 def read_rule_text(text: str) -> RecordRules:
     if text.startswith("---\n"):
         front, separator, _ = text[4:].partition("\n---")
@@ -129,6 +182,18 @@ def validate(record: dict, rules: RecordRules | None = None) -> dict:
 
     rules = rules or RecordRules()
     row = json.loads(json.dumps(record))
+    # Store what was written in one canonical form, so reports read it the same way.
+    # Anything that does not parse is kept as written and becomes an exception below.
+    if canonical_date(row.get("document_date")):
+        row["document_date"] = canonical_date(row["document_date"])
+    currency = row.get("currency")
+    for field in ("stated_total", "stated_tax"):
+        if stated_number(row.get(field), currency) is not None:
+            row[field] = str(stated_number(row[field], currency))
+    for line in row.get("lines") if isinstance(row.get("lines"), list) else []:
+        for field, line_currency in (("quantity", None), ("unit_price", currency), ("amount", currency)):
+            if isinstance(line, dict) and stated_number(line.get(field), line_currency) is not None:
+                line[field] = str(stated_number(line[field], line_currency))
     errors = list(row.get("source_problems") or [])
     def error(reason):
         if reason not in errors:

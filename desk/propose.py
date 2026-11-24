@@ -47,6 +47,15 @@ def money(d: Decimal) -> Decimal:
     return d.quantize(CENT, rounding=ROUND_HALF_UP)
 
 
+def currency_matches(seen: str, company_currency: str) -> bool:
+    """Is the document's currency the company's? Dollar words and symbols only match
+    a USD company: a USD invoice is never booked as EUR, and the desk never converts."""
+    same = {company_currency.casefold()}
+    if company_currency.upper() == "USD":
+        same |= {"$", "us$", "usd", "us dollars", "dollars"}
+    return norm_text(seen) in same
+
+
 def dstr(d: Decimal | None) -> str | None:
     if d is None:
         return None
@@ -567,8 +576,7 @@ def build(ctx: Context, extraction: Extraction, problems: list[dict], elements: 
     kind = {"customer_order": "sales_order", "supplier_invoice": "purchase_invoice"}.get(
         ov.get("kind") or expected or extraction.document_kind)
     if extraction.currency_seen:
-        cur = norm_text(extraction.currency_seen)
-        if cur not in (ctx.currency.lower(), "$", "us$", "usd", "us dollars", "dollars"):
+        if not currency_matches(extraction.currency_seen, ctx.currency):
             questions.append(Question("currency_mismatch", f"The document is in {extraction.currency_seen}, but this desk "
                                       f"books {ctx.currency} only and never converts.", "currency", answer_type="text",
                                       rule=f"{ORDER_POLICY}#O7"))

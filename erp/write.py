@@ -33,7 +33,7 @@ Safety rules, the same on every backend:
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Callable
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -275,7 +275,8 @@ class DraftWriter:
                 line.setdefault("warehouse", data["set_warehouse"])
             elif data.get("set_warehouse"):
                 line.setdefault("warehouse", data["set_warehouse"])
-            line["amount"] = str((Decimal(row["qty"]) * Decimal(row["rate"])).quantize(Decimal("0.01")))
+            # Half-up, like the proposal and the ERP: half-even would show a false difference on 0.125.
+            line["amount"] = str((Decimal(row["qty"]) * Decimal(row["rate"])).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
             lines.append(line)
         total = sum((Decimal(l["amount"]) for l in lines), Decimal("0"))
         return {"doctype": WRITE_KINDS[kind], **{k: v for k, v in data.items() if k != "items"}, "items": lines,

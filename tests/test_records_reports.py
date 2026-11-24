@@ -89,3 +89,41 @@ def test_rules_refuse_conflicting_aliases_and_untrusted_source_paths(tmp_path):
     (tmp_path / records.RULE_FILE).write_text(yaml.safe_dump(rules.model_dump()))
     with pytest.raises(ValueError, match="conflicting alias"):
         records.load_rules(tmp_path)
+
+
+def test_values_as_written_are_read_once_and_stored_canonically():
+    row = records.validate({"document_kind": "invoice", "party": "A", "reference": "R", "currency": "USD",
+                            "document_date": "2026-10-5", "stated_total": "USD 1,234.00", "stated_tax": "$0.00",
+                            "tax_basis": "exclusive",
+                            "lines": [{"item": "X", "quantity": "1,000.0", "unit": "Nos", "unit_price": "$1.234",
+                                       "amount": "1,234.00"}]})
+    assert row["exceptions"] == [] and row["status"] == "unreviewed"
+    assert row["document_date"] == "2026-10-05" and row["stated_total"] == "1234.00" and row["stated_tax"] == "0.00"
+    # Ambiguous or foreign values are kept as written and stay exceptions for a person.
+    assert records.stated_number("1,234", "USD") is None              # may be a decimal comma
+    assert records.stated_number("$12.00", "EUR") is None              # a dollar amount on a EUR record
+    assert records.stated_number("EUR 12.00", "EUR") == Decimal("12.00")
+
+
+def test_an_unreadable_date_is_undated_and_never_fails_a_report():
+    base = {"revision": 1, "document_kind": "invoice", "party": "A", "reference": "R", "currency": "USD",
+            "stated_total": "10", "stated_tax": "0", "created_at": "2026-10-20T00:00:00+00:00"}
+    rows = [dict(base, record_id="typo", document_date="05/10/2026", status="exception",
+                 exceptions=["document_date_unknown"]),
+            dict(base, record_id="ok", document_date="2026-10-20", status="accepted")]
+    for kind in reports.KINDS:
+        out = reports.build(rows, kind, start="2026-10-01", end="2026-11-01",
+                            generated_at="2026-10-21T00:00:00+00:00")
+        assert out["undated"] == ["typo"]
+    assert [r["record_id"] for r in reports.build(rows, "exceptions", start="2026-10-01", end="2026-11-01",
+                                                  generated_at="2026-10-21T00:00:00+00:00")["rows"]] == ["typo"]
+    invoices = reports.build(rows, "invoices", start="2026-10-01", end="2026-11-01")
+    assert invoices["totals_by_currency"]["USD"]["count"] == 1
+
+
+def test_duplicate_key_ignores_case_punctuation_and_legal_suffix():
+    one = {"company": "C", "document_kind": "invoice", "party": "Supplier", "reference": "INV-A"}
+    assert records.duplicate_key(one) == records.duplicate_key(dict(one, party="Supplier Ltd.", reference=" inv-a "))
+    assert records.duplicate_key(one) != records.duplicate_key(dict(one, reference="INV-B"))
+    assert records.duplicate_key(one) != records.duplicate_key(dict(one, party="Other Supplier"))
+    assert records.duplicate_key(dict(one, party=None)) is None

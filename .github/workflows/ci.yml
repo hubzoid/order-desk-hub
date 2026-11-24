@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12.6"        # the committed sample dataset was generated with 3.12.6; email header folding changed in later 3.12 patches
+          python-version: "3.12"          # the committed sample dataset was generated with 3.12.14, whose email module quotes display names
       - name: Install the desk and Hubzoid 2.x
         run: python -m pip install -e '.[fixtures,dev]'
       - name: "Tests (records, reports, ERP adapter and sample; live ERPNext, Docling, real-model and engine runs excluded)"
