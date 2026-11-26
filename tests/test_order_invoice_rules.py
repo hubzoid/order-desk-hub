@@ -359,3 +359,19 @@ def _payload(env):
     from tests.desk_helpers import payload
 
     return payload(env)
+
+
+def test_the_parser_reads_models_from_the_prefetched_folder(tmp_path):
+    # Docling downloads nothing when it is given the folder prefetch fills. Without it,
+    # OCR fetched missing files at parse time and a photo waited until the deadline.
+    from types import SimpleNamespace
+
+    from desk.docling_worker import artifacts_dir
+
+    cache = SimpleNamespace(artifacts_path=None, cache_dir=tmp_path)
+    assert artifacts_dir(cache) is None                         # never prefetched: Docling's own lookup
+    (tmp_path / "models").mkdir()
+    assert artifacts_dir(cache) == tmp_path / "models"
+    chosen = tmp_path / "chosen"
+    chosen.mkdir()
+    assert artifacts_dir(SimpleNamespace(artifacts_path=chosen, cache_dir=tmp_path)) == chosen

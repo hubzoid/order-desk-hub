@@ -115,8 +115,14 @@ def check_parser() -> dict:
     if importlib.util.find_spec("docling") is None:
         return _c("desk.parser", "warn", "Docling is not installed: email text and spreadsheets work, PDFs and images "
                   "do not.", "pip install -e '.[parsing]' in the hub folder, then hubzoid-desk parser prefetch")
-    cache = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface")) / "hub"
-    models = list(cache.glob("models--docling-project--*")) if cache.is_dir() else []
+    from docling.datamodel.settings import settings
+
+    from .docling_worker import artifacts_dir
+
+    # The folder the parser reads every model from, OCR included. Without it, OCR
+    # downloads at parse time and a photo can wait until the parse deadline.
+    folder = artifacts_dir(settings)
+    models = [p for p in folder.iterdir() if p.is_dir()] if folder else []
     if not models:
         return _c("desk.parser", "warn", "Docling's model assets are not on this machine yet.",
                   "hubzoid-desk parser prefetch")
