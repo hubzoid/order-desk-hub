@@ -350,6 +350,19 @@ def test_json_decimal_corrections_work_through_tool_and_cli(tmp_path, monkeypatc
     assert invalid["error"]["code"] == "invalid_json"
 
 
+def test_show_prints_an_erp_free_cases_exceptions(tmp_path, monkeypatch):
+    # Without ERP a case's questions are the record's exception codes, plain strings.
+    from typer.testing import CliRunner
+    from desk import cli
+    d = inbox(tmp_path)
+    case = normalize(d)
+    d.review_record("member", case["case_id"], expected_revision=1, changes={"document_date": "20/10/2026"})
+    monkeypatch.setattr(cli, "_desk", lambda _: d)
+    output = CliRunner().invoke(cli.app, ["show", str(d.hub_dir), case["case_id"]])
+    assert output.exit_code == 0, output.output
+    assert "? document_date_unknown" in output.output
+
+
 @pytest.mark.parametrize("error", [
     pytest.param("refused", id="definitive-erp-refusal"),
     pytest.param("invalid_payload", id="pre-send-invalid-payload"),

@@ -299,7 +299,8 @@ def show(hub: Path = HUB, case: str = CASE, html: Path = typer.Option(None, "--h
             else:
                 typer.echo(f"     -> {(line.get('item') or {}).get('code') or 'item'}: open question below")
         for q in v.get("questions") or []:
-            typer.echo(f"  ? {q['message']} ({q['field']})")
+            # ERP-free cases list the record's exception codes, which are plain strings.
+            typer.echo(f"  ? {q['message']} ({q['field']})" if isinstance(q, dict) else f"  ? {q}")
         if v.get("erp"):
             typer.echo(f"  ERP {v['erp']['name']} docstatus {v['erp']['docstatus']} version {v['erp']['modified']} "
                        f"approval {v['erp']['approval_digest']}")

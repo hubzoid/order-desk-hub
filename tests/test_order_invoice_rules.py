@@ -272,6 +272,69 @@ def test_corrupted_attachment_is_a_clear_error(tmp_path):
     assert case["state"] == "error" and case["error_code"] == "parse_failed"
 
 
+def test_small_files_that_expand_past_the_text_budget_are_refused():
+    import io
+
+    from openpyxl import Workbook
+
+    from desk import documents
+
+    rows = b"1\n" * (documents.MAX_ELEMENTS + 1)          # 10 KB of CSV, more rows than one document may hold
+    with pytest.raises(documents.ParseError, match="more than 5000 rows"):
+        documents.parse_file(rows, "order.csv", "text/csv")
+    with pytest.raises(documents.ParseError, match="more than 5000 rows"):
+        documents.parse_file(rows, "order.txt", "text/plain")
+    wb, buf = Workbook(), io.BytesIO()
+    wb.active["A1"] = "x" * (documents.MAX_ELEMENT_CHARS + 1)   # one cell bigger than any real order line
+    wb.save(buf)
+    with pytest.raises(documents.ParseError, match="longer than"):
+        documents.parse_file(buf.getvalue(), "order.xlsx", None)
+    assert len(documents.parse_file(b"SKU,Qty\nA,1\n", "order.csv", "text/csv").elements) == 2
+
+
+def test_a_borderless_table_row_becomes_one_element(monkeypatch):
+    # Docling reads a table without borders as one text item per cell. Items on one printed
+    # line are joined into a row, so a line's values share the one element the line cites.
+    import subprocess
+
+    from desk import documents
+
+    def box(left, top, height=10):     # Docling PDF boxes: [l, t, r, b], origin bottom-left
+        return [left, top, left + 40, top - height]
+    worker = [
+        {"kind": "text", "page": 1, "text": "TAX INVOICE", "box": box(40, 800)},
+        {"kind": "text", "page": 1, "text": "Synthetic Widget A", "box": box(40, 700)},
+        {"kind": "text", "page": 1, "text": "1,000", "box": box(250, 700)},
+        {"kind": "text", "page": 1, "text": "$1,234.00", "box": box(470, 700)},
+        {"kind": "text", "page": 1, "text": "Nos", "box": box(310, 701)},
+        {"kind": "text", "page": 1, "text": "A note that wraps over four lines", "box": box(40, 650, 40)},
+        {"kind": "text", "page": 1, "text": "Page 1", "box": box(470, 640)},       # beside the note: alone
+        {"kind": "text", "page": 1, "text": "No position"},
+        {"kind": "row", "page": 1, "row": 0, "cells": ["Item", "Qty"], "text": "Item | Qty"},
+    ]
+    done = subprocess.CompletedProcess([], 0, stdout=json.dumps({"elements": worker, "pages": 1}), stderr="")
+    monkeypatch.setattr(documents.subprocess, "run", lambda *a, **k: done)
+    parsed = documents._docling(b"", "inv.pdf", ocr=False, limits=documents.Limits(), suffix=".pdf")
+    assert [(e["kind"], e["loc"], e["text"]) for e in parsed.elements] == [
+        ("text", "inv.pdf page 1 line 1", "TAX INVOICE"),
+        ("row", "inv.pdf page 1 line 2", "Synthetic Widget A | 1,000 | Nos | $1,234.00"),
+        ("text", "inv.pdf page 1 line 3", "A note that wraps over four lines"),
+        ("text", "inv.pdf page 1 line 4", "Page 1"),
+        ("text", "inv.pdf page 1 line 5", "No position"),
+        ("row", "inv.pdf page 1 table 1 row 1", "Item | Qty"),
+    ]
+    assert parsed.elements[1]["cells"] == ["Synthetic Widget A", "1,000", "Nos", "$1,234.00"]
+    assert all("box" not in e for e in parsed.elements)
+
+
+def test_dollar_currency_matches_only_a_usd_company():
+    from desk.propose import currency_matches
+
+    assert currency_matches("$", "USD") and currency_matches("US Dollars", "USD") and currency_matches("usd", "USD")
+    assert currency_matches("EUR", "EUR")
+    assert not currency_matches("USD", "EUR") and not currency_matches("$", "EUR")
+
+
 def test_case_numbers_are_stable(desk):
     a = triage(desk, "OID-001")
     b = triage(desk, "OID-002")

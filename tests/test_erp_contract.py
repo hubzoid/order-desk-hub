@@ -146,6 +146,14 @@ def test_draft_is_saved_docstatus_zero_and_reread(erp_backend):
     assert again["approval_digest"] == out["approval_digest"]
 
 
+def test_half_cent_line_rounds_up_like_the_erp(erp_backend):
+    svc, _ = erp_backend
+    so = dict(SO, po_no="HF-9002", items=[dict(SO["items"][0], qty="1", rate="0.125")])
+    out = svc.writer().create_draft("sales_order", so, "op-half-cent")
+    assert out["needs_review"] is False and out["differences"] == []
+    assert out["totals"]["grand_total"] == "0.13"
+
+
 def test_same_external_ref_creates_one_document(erp_backend):
     svc, _ = erp_backend
     w = svc.writer()

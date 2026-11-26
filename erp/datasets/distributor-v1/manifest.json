@@ -104,7 +104,7 @@
     "raw/OID-A01.eml": "sha256:ba6157cfb2b60c66954b59edaa208a2e173ac0c00e20758739216f105ee6dd53",
     "raw/OID-A02.eml": "sha256:6bf0afc799947c82863bab75a37752ee4bbd0a86227d5a04ef313457992c4a84",
     "raw/OID-A03.eml": "sha256:b4a2dc4676811536c35c8673c2fd1ae06c27af9c68b5ac63931db3798a4e1f4b",
-    "raw/OID-A04.eml": "sha256:d33ea1fca2e6491a9c0fc4cd0e8e603eb96dde77e66b66a9cc0c6eafd709d4dd",
+    "raw/OID-A04.eml": "sha256:3ff3514ef663ba0f06a6e39d8ce4ca50a05aa573f6314c53779db0b184d743d4",
     "raw/OID-A05.eml": "sha256:e29408e35407247a706dcf690c44f905966bca323ce7711f3d73206cc4bcbeaf",
     "raw/OID-A06.eml": "sha256:f3d4cb549ff54ba87ffb1a560c88e32d503eadf88a7a4c4c791bdd757832b4d5",
     "raw/OID-A07.eml": "sha256:b68a7724e6bea7a835658cd00725d794b2af6383a2f05d95591fb10fb181914a",
@@ -114,7 +114,7 @@
     "module": "erp.datasets.generate",
     "openpyxl": "3.1.5",
     "pillow": "12.2.0",
-    "reportlab": "5.0.1"
+    "reportlab": "4.5.1"
   },
   "licence": "Apache-2.0",
   "schema_version": 1,

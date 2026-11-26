@@ -19,12 +19,22 @@ def instant(value: str) -> datetime:
     return dt
 
 
+def calendar_day(value, tz: str = "UTC") -> date | None:
+    """A record's document date, or None when it is missing or unreadable. A source
+    date is a calendar date. A timestamp is converted explicitly."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        return instant(value).astimezone(ZoneInfo(tz)).date() if "T" in value else date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
 def in_period(value: str | None, start: str | None, end: str | None, tz: str = "UTC") -> bool:
-    zone = ZoneInfo(tz)
-    if not value:
+    # An unreadable date is undated: it stays visible for review and never fails the report.
+    day = calendar_day(value, tz)
+    if day is None:
         return False
-    # A source date is a calendar date. A timestamp is converted explicitly.
-    day = instant(value).astimezone(zone).date() if "T" in value else date.fromisoformat(value)
     return (not start or day >= date.fromisoformat(start)) and (not end or day < date.fromisoformat(end))
 
 
@@ -60,7 +70,7 @@ def build(records: list[dict], kind: str, *, start: str | None = None, end: str 
     filtered = [r for r in rows if (not start and not end) or in_period(r.get("document_date"), start, end, tz)]
     out = {"report": kind, "filters": {"start": start, "end_exclusive": end, "timezone": tz, "party": party},
            "generated_at": generated_at, "revisions": [], "excluded": [], "rows": [],
-           "undated": [r["record_id"] for r in rows if not r.get("document_date")]}
+           "undated": [r["record_id"] for r in rows if calendar_day(r.get("document_date"), tz) is None]}
     if kind == "register":
         out["rows"] = [{k: r.get(k) for k in ("record_id", "revision", "document_kind", "document_date", "party",
                            "reference", "currency", "stated_total", "stated_tax", "tax_basis", "status",
@@ -72,7 +82,7 @@ def build(records: list[dict], kind: str, *, start: str | None = None, end: str 
         # Include undated exceptions even under date filters: they cannot be
         # assigned to an accepted period and must not disappear from review.
         selected = [r for r in rows if r.get("status") not in ("accepted", "superseded") and
-                    (r in filtered or not r.get("document_date"))]
+                    (r in filtered or calendar_day(r.get("document_date"), tz) is None)]
         for r in selected:
             at = r.get("exception_created_at") or r.get("created_at")
             age = max(0, int((generated - instant(at)).total_seconds())) if at else None

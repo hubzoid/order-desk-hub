@@ -51,7 +51,11 @@ def main(argv=None) -> int:
         else:
             text = str(getattr(item, "text", "") or "").strip()
             if text:
-                elements.append({"kind": "text", "page": page, "text": text})
+                element = {"kind": "text", "page": page, "text": text}
+                bbox = getattr(prov, "bbox", None)
+                if bbox is not None:     # lets the desk join cells of a table that has no borders
+                    element["box"] = [bbox.l, bbox.t, bbox.r, bbox.b]
+                elements.append(element)
     pages = len(getattr(doc, "pages", {}) or {}) or None
     print(json.dumps({"elements": elements, "pages": pages, "parser": f"docling {version('docling')}"}))
     return 0
