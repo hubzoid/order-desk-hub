@@ -134,6 +134,10 @@ def test_approving_drafts_for_this_chat_never_covers_a_submission(tmp_path, monk
     from hubzoid.db import operational_engine
 
     migrations.upgrade(operational_engine(hub), "operational")
+    # From Hubzoid 2.1 the person who approves must still be able to use the hub.
+    from hubzoid.access import store_for
+
+    store_for(hub).provision_owner("op@example.test", hub.name)
     me = hitl.Caller(account_id="op-1", email="op@example.test", conversation_id="chat-1")
     draft = hitl.check(hub, "order-desk", me, tool="desk_create_draft", arguments={"case": "CASE-1"})
     assert draft.action == "ask" and draft.request["allow_chat"]
