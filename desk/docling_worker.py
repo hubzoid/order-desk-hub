@@ -13,6 +13,16 @@ from __future__ import annotations
 import json
 import os
 import sys
+from pathlib import Path
+
+
+def artifacts_dir(settings) -> Path | None:
+    """The folder `parser prefetch` fills, when it exists. Docling reads every model,
+    OCR included, from this folder and downloads nothing. Without it, RapidOCR looks
+    in its own package folder and fetches what is missing there at parse time, even
+    when prefetch already cached it, and a slow mirror holds a photo until the deadline."""
+    folder = Path(settings.artifacts_path or Path(settings.cache_dir) / "models")
+    return folder if folder.is_dir() else None
 
 
 def main(argv=None) -> int:
@@ -29,12 +39,14 @@ def main(argv=None) -> int:
 
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions
+    from docling.datamodel.settings import settings
     from docling.document_converter import DocumentConverter, ImageFormatOption, PdfFormatOption
 
     opts = PdfPipelineOptions()
     opts.do_ocr = bool(args.ocr)
     opts.do_table_structure = True
     opts.enable_remote_services = False
+    opts.artifacts_path = artifacts_dir(settings)
     converter = DocumentConverter(format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts),
                                                   InputFormat.IMAGE: ImageFormatOption(pipeline_options=opts)})
     result = converter.convert(args.path, max_num_pages=args.max_pages, raises_on_error=True)
